@@ -4,6 +4,7 @@
 #include <chrono>
 #include <vector>
 #include <mutex>
+#include <atomic>
 #include "../include/buttonrpc-master/buttonrpc.hpp"
 
 const int TASK_TIME_OUT_SEC { 10 };
@@ -113,6 +114,28 @@ public:
      */
     Master(int mapCount, int reduceCount, const std::vector<std::string>& fileNames);
 
+     /**
+     * @brief Return number of map task remaining
+     * 
+     * const is not used since buttonrpc does not support template overlaods for const member function pointer
+     */
+    int getMapRemaining() { return m_mapRemaining.load(); }
+
+     /**
+     * @brief Return number of reduce task remaining
+     * 
+     * const is not used since buttonrpc does not support template overlaods for const member function pointer
+     */
+    int getReduceRemaining() { return m_reduceRemaining.load(); }
+
+
+    /**
+     * @brief Return total number of map task 
+     * 
+     * const is not used since buttonrpc does not support template overlaods for const member function pointer
+     */
+    int getMapCount() { return m_mapCount; }
+
     /**
      * @brief Return total number of reduce task 
      * 
@@ -140,14 +163,26 @@ public:
      */
     Task::ptr selectReduceTask();
 
+    /**
+     * @brief 
+     */
+    void reportMapComplete(int taskId);
+
+    /**
+     * @brief
+     */
+    void reportReduceComplete(int taskId);
+
+    
+
   
 private:
     std::vector<Task::ptr> m_mapTasks {};  
     std::vector<Task::ptr> m_reduceTasks {};              
-    int m_mapRemaining {};
-    int m_reduceRemaining {};
+    std::atomic<int> m_mapRemaining {};
+    std::atomic<int> m_reduceRemaining {};
+    int m_mapCount {};
     int m_reduceCount {};
-    std::mutex m_mapMutex {};
-    std::mutex m_reduceMutex {};
+    std::mutex m_Mutex {};
 
 };

@@ -1,11 +1,12 @@
 #include <iostream>
-#include <queue>
 #include <chrono>
+#include <thread>
 #include "master.hpp"
 
 Master::Master(int mapCount, int reduceCount, const std::vector<std::string>& fileNames)
     : m_mapRemaining { mapCount }
     , m_reduceRemaining { reduceCount }
+    , m_mapCount { mapCount }
     , m_reduceCount { reduceCount }
 {
     for (int i=0; i<mapCount; i++)
@@ -22,6 +23,7 @@ Master::Master(int mapCount, int reduceCount, const std::vector<std::string>& fi
 
 Task Master::getTaskForWorker()
 {
+    std::lock_guard<std::mutex> lockGuard(m_Mutex);
     Task::ptr taskPtr;
 
     if (m_mapRemaining > 0)
@@ -41,8 +43,7 @@ Task Master::getTaskForWorker()
 
 Task::ptr Master::selectMapTask()
 {
-    std::lock_guard<std::mutex> lockGuard(m_mapMutex);
-
+    
     for (auto& i : m_mapTasks)
     {
         if (i->getTaskState() == TaskState::UNASSIGNED)
@@ -56,9 +57,7 @@ Task::ptr Master::selectMapTask()
 }
 
 Task::ptr Master::selectReduceTask()
-{
-    std::lock_guard<std::mutex> lockGuard(m_reduceMutex);
-    
+{    
     for (auto& i : m_reduceTasks)
     {
         if (i->getTaskState() == TaskState::UNASSIGNED)
@@ -73,10 +72,33 @@ Task::ptr Master::selectReduceTask()
 
 void Master::reportMapComplete(int taskId)
 {
+    std::lock_guard<std::mutex> lockGuard(m_Mutex);
+
+    for (auto& i : m_mapTasks)
+    {
+        if (i->getTaskId() == taskId)
+        {
+            i->setTaskState(TaskState::COMPLETED);
+            m_mapRemaining--;
+            std::cout << "Map task " << taskId << " completed." << std::endl;
+            std::cout << "Map tasks remained: " << this->getMapRemaining() << std::endl;
+        }
+    }
+}
+
+void Master::reportReduceComplete(int taskId)
+{
+    std::lock_guard<std::mutex> lockGuard(m_Mutex);
+
     for (auto& i : m_reduceTasks)
     {
         if (i->getTaskId() == taskId)
+        {
             i->setTaskState(TaskState::COMPLETED);
+            m_reduceRemaining--;
+            std::cout << "Reduce task " << taskId << " completed." << std::endl;
+            std::cout << "Reduce tasks remained: " << this->getReduceRemaining() << std::endl;
+        }
     }
 }
 
@@ -101,21 +123,36 @@ int main(int argc, char* argv[])
 
 
     /*
-        Initialize master 
+        Initialize master and register RPC functions
     */ 
     Master master { mapCount, reduceCount, fileNames };
-
     buttonrpc server;
     server.as_server(5555);
     server.bind("getTaskForWorker", &Master::getTaskForWorker, &master); 
     server.bind("getReduceCount", &Master::getReduceCount, &master); 
     server.bind("reportMapComplete", &Master::reportMapComplete, &master); 
+    server.bind("getMapCount", &Master::getMapCount, &master); 
+    server.bind("reportReduceComplete", &Master::reportReduceComplete, &master); 
+
+    /*
+        Start a separate thread to monitor when to exit master
+    */
+    std::thread monitorThread([&master]() {
+        while (true) {
+            if (master.getMapRemaining() == 0 && master.getReduceRemaining())
+            {
+                std::cout << "All map and reduce tasks completed. Master exiting" << std::endl;
+                std::exit(0);
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+        }
+    });
 
 
-    // Run RPC server
     std::cout << "Starting server on RPC server on port 5555" << std::endl;
     server.run();
 
+    monitorThread.join();
     return 0;
 }
 

@@ -1,0 +1,2 @@
+docker build -t 6.824_env .
+

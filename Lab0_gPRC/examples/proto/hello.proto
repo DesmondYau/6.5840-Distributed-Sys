@@ -1,0 +1,15 @@
+syntax ="proto3";
+
+message HelloRequest {
+    int32 a = 1;
+    int32 b = 2;
+    int32 c = 3;
+}
+
+message HelloResponse {
+    int32 a = 1;
+}
+
+service ComputeService {
+    rpc computeSum(HelloRequest) returns (HelloResponse) {}
+}

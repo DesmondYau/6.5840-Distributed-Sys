@@ -1,0 +1,5 @@
+/6.824/Lab0_gPRC/examples/build/CMakeFiles/protolib.dir
+/6.824/Lab0_gPRC/examples/build/CMakeFiles/server.dir
+/6.824/Lab0_gPRC/examples/build/CMakeFiles/client.dir
+/6.824/Lab0_gPRC/examples/build/CMakeFiles/edit_cache.dir
+/6.824/Lab0_gPRC/examples/build/CMakeFiles/rebuild_cache.dir

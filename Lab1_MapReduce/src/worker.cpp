@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <thread>
 #include <chrono>
+#include <unistd.h>
 #include "worker.hpp"
 
 
@@ -20,12 +21,13 @@ int ihash(const std::string& key) {
 
 void writeMapOutput(std::vector<KeyValuePair> intermediate, int reduceCount, int taskID)
 {
-    std::vector<std::ofstream> outFiles(reduceCount);
-    for (int i=0; i<reduceCount; i++)
+    std::vector<std::ofstream> outFiles;
+    outFiles.reserve(reduceCount);
+    for (int i{0}; i<reduceCount; i++)
     {
         std::string fname { "mr-" + std::to_string(taskID) + "-" + std::to_string(i) };
-        outFiles[i].open(fname);
-        if (!outFiles[i])
+        outFiles.emplace_back(fname);
+        if (!outFiles.back())
         {
             std::cerr << "Cannot open " << fname << std::endl;
         }
@@ -39,12 +41,6 @@ void writeMapOutput(std::vector<KeyValuePair> intermediate, int reduceCount, int
         j["value"] = kv.value_;
         outFiles[i] << j.dump() << "\n";
     }
-
-    for (auto& f : outFiles)
-    {
-        f.close();
-    }
-
 }
 
 void doMapTask(const std::string& filename, MapFunc mapFunc, int reduceCount, int taskID)
@@ -66,6 +62,65 @@ void doMapTask(const std::string& filename, MapFunc mapFunc, int reduceCount, in
         intermediate.push_back(kv);
 
     writeMapOutput(intermediate, reduceCount, taskID);
+}
+
+void doReduceTask(int taskID, ReduceFunc reduceFunc, int mapCount)
+{
+    std::vector<KeyValuePair> intermediate {};
+    for (int i{0}; i<mapCount; i++)
+    {
+        std::ifstream inf { "mr-" + std::to_string(i) + "-" + std::to_string(taskID) };
+        if (!inf)
+        {
+            std::cerr << "Cannot open file intermediate file for reduce task" << std::endl;
+        }
+
+        std::string line;
+        while(std::getline(inf, line))
+        {
+            KeyValuePair kv;
+            nlohmann::json j = nlohmann::json::parse(line);
+            kv.key_ = j["key"].get<std::string>();
+            kv.value_ = j["value"].get<string>();
+            intermediate.emplace_back(kv);
+        }
+    }
+ 
+    std::sort(
+        intermediate.begin(), intermediate.end(),
+        [](const KeyValuePair& a, const KeyValuePair& b) {
+            return a.key_ < b.key_;
+        }
+    );
+
+    // Open output file
+    std::ofstream ofile("mr-out-" + std::to_string(taskID));
+
+    // Run Reduce on each distinct key
+    for (size_t i{0}; i < intermediate.size();) {
+        size_t j = i + 1;
+        while (j < intermediate.size() && intermediate[j].key_ == intermediate[i].key_) {
+            j++;
+        }
+        std::vector<std::string> values;
+        for (size_t k{i}; k < j; k++) {
+            values.push_back(intermediate[k].value_);
+        }
+
+        std::string output = reduceFunc(intermediate[i].key_, values);
+        ofile << intermediate[i].key_ << " " << output << "\n";
+        i = j;
+    }
+}
+
+std::string taskTypeToString(TaskType state) {
+    switch (state) {
+        case TaskType::EMPTYTASK : return "EMPTYTASK";
+        case TaskType::COMPLETETASK:   return "COMPLETETASK";
+        case TaskType::MAPTASK:  return "MAPTASK";
+        case TaskType::REDUCETASK: return "REDUCETASK";
+        default: return "UNKNOWN";
+    }
 }
 
 
@@ -111,36 +166,53 @@ int main(int argc, char* argv[])
     */
     buttonrpc client;
 	client.as_client("127.0.0.1", 5555);
+    client.set_timeout(5000);
+    std::cout << "Starting Worker process ID: " << getpid() << std::endl;
 
     
     /*
-
+        Worker handle map task and reduce task
     */
     bool completed { false };
 
     while(!completed)
     {
-        Task task { client.call<Task>("getTaskForWorker").val() };
+        // Worker requesting task from master
+        auto result { client.call<Task>("getTaskForWorker") };
+        if (result.error_code() != buttonrpc::RPC_ERR_SUCCESS)
+        {
+            std::cerr << "RPC failed: " << result.error_msg() << ". Worker exiting" << std::endl;
+            return 1;
+        }
+        Task task { result.val() };
         int reduceCount { client.call<int>("getReduceCount").val() };
-        std::cout << task.getTaskId() << std::endl;
-        
+        int mapCount { client.call<int>("getMapCount").val() };
+        std::cout << "Requested task " << task.getTaskId() << "" << taskTypeToString(task.getTaskType()) << std::endl;
+
         if (task.getTaskType() == TaskType::MAPTASK)
         {
+            std::cout << "Worker process ID: " << getpid() << " working on map task " << task.getTaskId() << std::endl;
             doMapTask(task.getFileName(), mapFunc, reduceCount, task.getTaskId());
+            std::cout << "Worker process ID: " << getpid() << " completed map task " << task.getTaskId() << std::endl;
             client.call<void>("reportMapComplete", task.getTaskId());
         }
         else if (task.getTaskType() == TaskType::REDUCETASK)
         {
-            // doReduceTask(task.taskID_, reduceFunc);
-            // reportReduceComplete(task.taskID_);
+            std::cout << "Worker process ID: " << getpid() << " working on reduce task " << task.getTaskId() << std::endl;
+            doReduceTask(task.getTaskId(), reduceFunc, mapCount);
+            std::cout << "Worker process ID: " << getpid() << " completed reduce task " << task.getTaskId() << std::endl;
+            client.call<void>("reportReduceComplete", task.getTaskId());
         }
         else if (task.getTaskType() == TaskType::EMPTYTASK)
         {
+            std::cout << "No current available tasks. Retry after 5 seconds" << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         else if (task.getTaskType() == TaskType::COMPLETETASK)
         {
+            std::cout << "All map and reduce tasks completed. Worker exiting" << std::endl;
             completed = true;
+            
         }
     }
     
