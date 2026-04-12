@@ -2,13 +2,19 @@
 
 # MIT 6.824 Lab 1 – MapReduce (C++ Implementation)
 
-## Overview
+## 1. Overview
 
 This project is a C++ implementation of **MIT 6.824 Lab 1: MapReduce**, demonstrating distributed task coordination using gRPC. The goal is to design a fault-tolerant Master–Worker system that executes map and reduce tasks in parallel, handles worker crashes gracefully, and produces deterministic output identical to the sequential baseline.
 
+This project demonstrates:
+- Distributed coordination and fault recovery
+- Practical use of gRPC for RPC communication
+- Thread-safe task management and synchronization
+- System design for parallel data processing
+
 ---
 
-## Architecture Summary
+## 2. Architecture Summary
 
 ### Master Node
 
@@ -57,7 +63,7 @@ Two concurrent threads maintain system health:
 
 ---
 
-## Execution Flow
+## 3. Execution Flow
 
 1. **Initialization:** Master creates vectors of map and reduce tasks.
 2. **Task Assignment:** Workers request tasks via gRPC; Master assigns and timestamps them.
@@ -67,7 +73,7 @@ Two concurrent threads maintain system health:
 
 ---
 
-## How to Run
+## 4. How to Run
 
 ```bash
 # Build using CMake
@@ -84,7 +90,7 @@ There is a test-mr.sh script in the tests folder that automates running a suite 
 
 ---
 
-## Technical Highlight
+## 5. Technical Highlight
 - **Language:** C++23
 - **RPC Framework:** gRPC
 - **Concurrency:** std::thread, std::mutex
