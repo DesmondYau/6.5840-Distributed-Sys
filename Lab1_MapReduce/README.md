@@ -1,1 +1,1 @@
-<img width="608" height="398" alt="image" src="https://github.com/user-attachments/assets/a83d74df-bbe8-4b8f-ae6f-531241bed952" /><img width="1536" height="1024" alt="Copilot_20260412_215806" src="https://github.com/user-attachments/assets/baa6fbc2-a7f7-433b-99f2-8a312fdc4f47" />
+<img width="1536" height="1024" alt="Copilot_20260412_215806" src="https://github.com/user-attachments/assets/baa6fbc2-a7f7-433b-99f2-8a312fdc4f47" />
