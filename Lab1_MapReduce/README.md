@@ -1,5 +1,4 @@
 <img width="1536" height="1024" alt="Copilot_20260412_215806" src="https://github.com/user-attachments/assets/baa6fbc2-a7f7-433b-99f2-8a312fdc4f47" />
-
 # MIT 6.824 Lab 1 – MapReduce (C++ Implementation)
 
 ## Overview
@@ -19,14 +18,14 @@ The **Master** acts as the central coordinator. It manages two vectors:
 
 Each task tracks its ID, filename, type, state (`UNASSIGNED`, `ASSIGNED`, `COMPLETED`), and deadline.
 
-#### Key Responsibilities
+##### Key Responsibilities
 
 * **Task Assignment:** When a worker requests a task, the Master assigns an unassigned map or reduce task via gRPC.
 * **Progress Tracking:** Workers report completion using RPC calls, updating task states and remaining counters.
 * **Fault Recovery:** A background thread resets timed-out tasks to `UNASSIGNED` if deadlines expire.
 * **Graceful Shutdown:** Another thread monitors completion and shuts down the gRPC server when all tasks finish.
 
-#### Concurrency Control
+##### Concurrency Control
 
 All task operations are protected by `std::mutex` to ensure thread-safe updates.
 
@@ -67,15 +66,6 @@ Two concurrent threads maintain system health:
 
 ---
 
-## Key Features
-
-* **Vector-based task management** for simplicity and clarity.
-* **gRPC communication** for robust, language-agnostic RPC handling.
-* **Thread-based monitoring** for fault tolerance and graceful shutdown.
-* **Mutex synchronization** for safe concurrent access.
-
----
-
 ## How to Run
 
 ```bash
@@ -83,3 +73,19 @@ Two concurrent threads maintain system health:
 mkdir -p build && cd build
 cmake ..
 make
+
+### Run Tests
+There is a test-mr.sh script in the tests folder that automates running a suite of MapReduce tests for correctness and parallelism.
+``bash
+./tests/test-mr.sh
+
+---
+
+## Technical Highlight
+- **Language:** C++23
+- **RPC Framework:** gRPC
+- **Concurrency:** std::thread, std::mutex
+- **Timeout Handling:** std::chrono
+- **Design Pattern:** Master–Worker coordination
+
+
