@@ -11,4 +11,10 @@ RUN mkdir -p /deps/grpc/build && \
           .. && \
     make -j2 install
     
+# Build and install GoogleTest
+RUN git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
+RUN mkdir -p /deps/googletest/build && \
+    cd /deps/googletest/build && \
+    cmake .. && \
+    make -j2 install
 

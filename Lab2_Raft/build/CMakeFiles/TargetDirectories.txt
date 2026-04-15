@@ -1,0 +1,3 @@
+/6.824/Lab2_Raft/build/CMakeFiles/raft_tests.dir
+/6.824/Lab2_Raft/build/CMakeFiles/edit_cache.dir
+/6.824/Lab2_Raft/build/CMakeFiles/rebuild_cache.dir
