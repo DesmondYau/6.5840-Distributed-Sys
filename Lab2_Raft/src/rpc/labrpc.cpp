@@ -8,7 +8,58 @@
 
 
 Network::Network() 
-{}
+{
+    // Start a network dispatcher thread and listen to 
+    m_dispatcher = std::thread([this]() {
+        while (!m_done) {
+            std::shared_ptr<reqMsg> xreq;
+            {
+                std::unique_lock<std::mutex> lock(m_queueMu);
+                m_cv.wait(lock, [this]() { return m_done || !m_reqQueue.empty(); });
+                if (m_done) 
+                    break;
+                xreq = (m_reqQueue.front());
+                m_reqQueue.pop();
+            }
+
+            // Track stats
+            m_totalRPCCount.fetch_add(1, std::memory_order_relaxed);
+            m_totalBytes.fetch_add(xreq->args.size(), std::memory_order_relaxed);
+
+            // Process asynchronously
+            std::thread([this, xreq]() {
+                ReplyMsg replyMsg;
+                this->deliver(xreq->endpointName, xreq->rpcType, xreq->args, replyMsg);
+                xreq->prom.set_value(replyMsg);
+            }).detach();
+        }
+    });
+}
+
+Network::~Network()
+{
+    m_done = true;
+    m_cv.notify_all();
+    if (m_dispatcher.joinable()) {
+        m_dispatcher.join();
+    }
+}
+
+void Network::send(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom) 
+{
+    auto req = std::make_shared<reqMsg>();
+    req->endpointName = endpointName;
+    req->rpcType = rpcType;
+    req->args = args;
+    req->prom = std::move(prom);
+
+    {
+        std::lock_guard<std::mutex> lock(m_queueMu);
+        m_reqQueue.push(req);
+    }
+    m_cv.notify_one();
+}
+
 
 void Network::deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, ReplyMsg& replyMsg)
 {
@@ -71,7 +122,7 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
 
 
     /*
-        Poll every 100ms. If reply arrives and not empty, mark replyOK. If not, check if server was deleted.
+        Poll 100ms. If reply arrives and not empty, mark replyOK. If not, check if server was deleted.
     */    
     bool replyOK { false };                                        // Track whether the background thread has finished and produced a valid reply
     bool serverDead { false };                                     // Tracks whether the server was deleted while we were waiting.
@@ -79,10 +130,13 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
 
     // Wait loop: either reply arrives or server dies
     while (!replyOK && !serverDead) {
-        if (fut.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
+        if (fut.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) 
+        {
             localReplyMsg = fut.get();
             replyOK = localReplyMsg.ok;
-        } else {
+        } 
+        else 
+        {
             serverDead = isServerDead(endpointName, serverName, server);
             if (serverDead)
             {
@@ -210,4 +264,6 @@ void Network::cleanup()
     m_endpoints.clear();
     m_connectionMap.clear(); 
     m_enabledMap.clear(); 
+    m_done = true;
+    m_cv.notify_all();
 }

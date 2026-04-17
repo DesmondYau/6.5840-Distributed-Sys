@@ -17,6 +17,7 @@ add_executable(raft_tests
     src/config.cpp
     src/rpc/labrpc.cpp
     src/raft.cpp
+    src/helper.cpp
 )
 target_link_libraries(raft_tests PRIVATE GTest::gtest GTest::gtest_main pthread)
 

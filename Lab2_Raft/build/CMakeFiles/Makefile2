@@ -81,12 +81,12 @@ clean: CMakeFiles/raft_tests.dir/clean
 CMakeFiles/raft_tests.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/6.824/Lab2_Raft/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target raft_tests"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/6.824/Lab2_Raft/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target raft_tests"
 .PHONY : CMakeFiles/raft_tests.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/raft_tests.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /6.824/Lab2_Raft/build/CMakeFiles 6
+	$(CMAKE_COMMAND) -E cmake_progress_start /6.824/Lab2_Raft/build/CMakeFiles 7
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/raft_tests.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /6.824/Lab2_Raft/build/CMakeFiles 0
 .PHONY : CMakeFiles/raft_tests.dir/rule

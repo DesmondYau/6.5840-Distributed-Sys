@@ -153,6 +153,30 @@ src/config.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/src/config.cpp.s
 .PHONY : src/config.cpp.s
 
+src/helper.o: src/helper.cpp.o
+.PHONY : src/helper.o
+
+# target to build an object file
+src/helper.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/src/helper.cpp.o
+.PHONY : src/helper.cpp.o
+
+src/helper.i: src/helper.cpp.i
+.PHONY : src/helper.i
+
+# target to preprocess a source file
+src/helper.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/src/helper.cpp.i
+.PHONY : src/helper.cpp.i
+
+src/helper.s: src/helper.cpp.s
+.PHONY : src/helper.s
+
+# target to generate assembly for a file
+src/helper.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/raft_tests.dir/build.make CMakeFiles/raft_tests.dir/src/helper.cpp.s
+.PHONY : src/helper.cpp.s
+
 src/persister.o: src/persister.cpp.o
 .PHONY : src/persister.o
 
@@ -261,6 +285,9 @@ help:
 	@echo "... src/config.o"
 	@echo "... src/config.i"
 	@echo "... src/config.s"
+	@echo "... src/helper.o"
+	@echo "... src/helper.i"
+	@echo "... src/helper.s"
 	@echo "... src/persister.o"
 	@echo "... src/persister.i"
 	@echo "... src/persister.s"

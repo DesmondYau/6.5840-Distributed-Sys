@@ -6,6 +6,8 @@
 #include <mutex>
 #include <atomic>
 #include <random>
+#include <queue>
+#include <future>
 
 class Endpoint;                                                                        // RPC stubs for communication
 class Server;                                                                          // Represent a Raft node in the cluser
@@ -16,10 +18,21 @@ struct ReplyMsg
     std::string reply;
 };
 
+struct reqMsg 
+{
+    std::string endpointName;
+    std::string rpcType;
+    std::string args;
+    std::promise<ReplyMsg> prom;
+};
+
+
 class Network : public std::enable_shared_from_this<Network> {
 public:
     Network();
+    ~Network();
 
+    void send(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom);
     void deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, ReplyMsg& replyMsg);
     bool isServerDead(const std::string& endpointName, const std::string& serverName, const std::shared_ptr<Server>& server);
 
@@ -48,15 +61,20 @@ public:
     void cleanup();
 
 private:
-    std::mutex m_mu;
+    
     bool m_reliable { true };
     bool m_longDelays { false };
     bool m_longReordering { false };
+    bool m_done { false };
+    std::queue<std::shared_ptr<reqMsg>> m_reqQueue;                 // queue of pending requests
+    std::mutex m_queueMu;                                           // mutex to protect m_reQueue
+    std::condition_variable m_cv;                                   // signals new requests
     std::map<std::string,std::shared_ptr<Server>> m_servers;        // Registry of all Raft servers currently alive in the cluster (server name, pointer to Server object)
     std::map<std::string,std::shared_ptr<Endpoint>> m_endpoints;    // Registry of all RPC Endpoints for RPC communication (endpoint name, pointer to Endpoint object)
     std::map<std::string,std::string> m_connectionMap;              // Map RPC endpoint names to the corresponding server name  (endpoint name, server name)
     std::map<std::string,bool> m_enabledMap;                        // Track whether each RPC endpoint is enabled to simulate partitions, dropped connections, disabled stubs (endpoint name, bool)
-    
     std::atomic<int> m_totalRPCCount { 0 };
     std::atomic<long> m_totalBytes { 0 };
+    std::mutex m_mu;
+    std::thread m_dispatcher;
 };

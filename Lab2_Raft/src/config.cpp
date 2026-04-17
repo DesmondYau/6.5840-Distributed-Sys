@@ -18,13 +18,13 @@ Config::Config(int num, bool unreliable)
     , m_logs(num)
     , m_endpointNames(num, std::vector<std::string>{})
 {
-    setNetworkUnreliable(unreliable);
-    m_network->setLongDelays(true);
-
     for (int i{0}; i < m_num; i++) {
         startServer(i);
         connectServer(i);
     }
+
+    setNetworkUnreliable(unreliable);
+    m_network->setLongDelays(true);
 
     m_startTime = std::chrono::steady_clock::now();
 }
@@ -65,8 +65,8 @@ int Config::checkOneLeader() {
 
         for (int i{0}; i < m_num; i++) {
             if (m_connected[i] && m_rafts[i]) {
-                auto [term, isLeader] = m_rafts[i]->getState();
-                if (isLeader) 
+                auto [term, state] = m_rafts[i]->getTermState();
+                if (state == Raft::State::LEADER) 
                     leaders[term].emplace_back(i);
             }
         }
@@ -94,7 +94,7 @@ int Config::checkTerms() {
     {
         if (m_connected[i] && m_rafts[i]) 
         {
-            auto [t, _] = m_rafts[i]->getState();
+            auto [t, _] = m_rafts[i]->getTermState();
             if (term == -1) 
                 term = t;
             else if (term != t)
@@ -107,8 +107,8 @@ int Config::checkTerms() {
 void Config::checkNoLeader() {
     for (int i{0}; i < m_num; i++) {
         if (m_connected[i] && m_rafts[i]) {
-            auto [_, isLeader] = m_rafts[i]->getState();
-            if (isLeader)
+            auto [_, state] = m_rafts[i]->getTermState();
+            if (state == Raft::State::LEADER)
                 throw std::runtime_error("expected no leader");
         }
     }

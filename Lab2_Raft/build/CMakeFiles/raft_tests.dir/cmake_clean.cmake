@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/raft_tests.dir/src/config.cpp.o"
   "CMakeFiles/raft_tests.dir/src/config.cpp.o.d"
+  "CMakeFiles/raft_tests.dir/src/helper.cpp.o"
+  "CMakeFiles/raft_tests.dir/src/helper.cpp.o.d"
   "CMakeFiles/raft_tests.dir/src/persister.cpp.o"
   "CMakeFiles/raft_tests.dir/src/persister.cpp.o.d"
   "CMakeFiles/raft_tests.dir/src/raft.cpp.o"

@@ -4,6 +4,7 @@
 #include <functional>
 #include <mutex>
 
+
 class Service {
 public:
     using Handler = std::function<void(const std::string& args, std::string& reply)>;
