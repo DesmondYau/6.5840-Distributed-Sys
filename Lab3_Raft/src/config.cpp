@@ -114,6 +114,64 @@ void Config::checkNoLeader() {
     }
 }
 
+std::pair<int,std::string> Config::nCommitted(int index) {
+    std::lock_guard<std::mutex> lock(m_mu);
+
+    int count = 0;
+    std::string cmd;
+    for (int i = 0; i < m_num; i++) {
+        if (m_logs[i].contains(index)) {
+            count++;
+            if (cmd.empty()) {
+                cmd = m_logs[i][index];
+            } else if (m_logs[i][index] != cmd) {
+                throw std::runtime_error("different commands committed at same index");
+            }
+        }
+    }
+    return {count, cmd};
+}
+
+int Config::one(const std::string& command, int expectedServers, bool retry) {
+    // Try to find a leader and submit the command
+    int index = -1;
+    for (int tries = 0; tries < 5; tries++) {
+        int leader = -1;
+        for (int i = 0; i < m_num; i++) {
+            if (m_connected[i] && m_rafts[i]) {
+                auto [term, state] = m_rafts[i]->getTermState();
+                if (state == Raft::State::LEADER) {
+                    leader = i;
+                    break;
+                }
+            }
+        }
+
+        if (leader != -1) {
+            bool ok = false;
+            index = m_rafts[leader]->start(command, ok);
+            if (ok) break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    if (index == -1) throw std::runtime_error("no leader to start command");
+
+    // Wait until the command is committed by expectedServers
+    for (int iters = 0; iters < 10; iters++) {
+        auto [nd, cmd] = nCommitted(index);
+        if (nd >= expectedServers) {
+            if (cmd != command) {
+                throw std::runtime_error("committed command does not match");
+            }
+            return index;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (!retry) throw std::runtime_error("command not committed in time");
+    return -1;
+}
+
 
 void Config::startServer(int i) 
 { 

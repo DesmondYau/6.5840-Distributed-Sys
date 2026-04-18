@@ -68,6 +68,9 @@ public:
     int checkTerms();                                       // Returns current term across cluster
     void checkNoLeader();                                   // Asserts no leader exists
 
+     /*Tests for Lab 2B*/
+    std::pair<int,std::string> nCommitted(int index);                           // returns (#servers committed, command string)
+    int one(const std::string& command, int expectedServers, bool retry);       // submit command and wait for commit
                                            
 
 private:
