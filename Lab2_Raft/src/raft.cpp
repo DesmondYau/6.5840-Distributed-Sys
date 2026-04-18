@@ -80,7 +80,14 @@ void Raft::startRaft()
             {
                 std::cout << "[Raft" << m_id << "] Became leader!" << std::endl;
                 m_state = State::LEADER;
-                return;
+            
+                // Initialize nextIndex vector and matchIndex vector
+                auto lastLogIndex = static_cast<uint64_t>(m_logs.size()-1);
+                for (size_t i{0}; i<m_peers.size(); i++)
+                {
+                    m_nextindex.emplace_back(lastLogIndex+1);
+                    m_matchIndex.emplace_back(0);
+                }
             }
             else if (std::chrono::steady_clock::now() > m_lastHeartbeat + m_electionTimeout)
             {
@@ -91,25 +98,10 @@ void Raft::startRaft()
         }
         else if (m_state == Raft::State::LEADER)
         {
-            for (size_t id{0}; id<m_peers.size(); id++)
-            {
-                if (static_cast<int32_t>(id) == m_id)
-                    continue;
-                
-                AppendEntriesArgs args;
-                {
-                    std::lock_guard<std::mutex> lock(m_mu);
-
-                    if (m_dead.load() || m_state != State::CANDIDATE)
-                        return;
-                    
-                    args = { m_currentTerm, m_id, static_cast<uint64_t>(m_logs.size()-1), m_logs.back()->term, "", m_commitIndex};
-                    std::thread ([this, id, args] {
-                        AppendEntriesReply reply;
-                        bool received = sendAppendEntries(static_cast<int32_t>(id), args, reply);
-                    }).detach(); 
-                }
-            }
+            lock.unlock();
+            broadcastAppendEntries("");
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            lock.lock();
         }
         else
         {
@@ -133,16 +125,17 @@ void Raft::startElection()
         std::lock_guard<std::mutex> lock(m_mu);
         m_currentTerm++;
         m_votedFor = m_id;
-        m_lastHeartbeat = std::chrono::steady_clock::now();
         m_votesGranted = 1;
+        m_lastHeartbeat = std::chrono::steady_clock::now();
     }
 
     std::cout << "[Raft" << m_id << "] Sending requestVote RPC with term " << m_currentTerm << std::endl;
-    uint64_t lastLogIndex = m_logs.empty() ? 0 : static_cast<uint64_t>(m_logs.size() - 1);
+    int64_t lastLogIndex = m_logs.empty() ? -1 : static_cast<uint64_t>(m_logs.size() - 1);
     uint32_t lastLogTerm  = m_logs.empty() ? 0 : static_cast<uint32_t>(m_logs.back()->term);
     
     for (size_t id{0}; id<m_peers.size(); id++)
     {
+        // Request vote from all peers except itself
         if (static_cast<int32_t>(id) == m_id)
             continue;
 
@@ -168,7 +161,7 @@ void Raft::startElection()
                     std::cout << "[Raft" << m_id << "] Received vote from " << id << " " << reply.voteGranted << std::endl;
                     m_votesGranted++;
                 }
-                else if (reply.voteGranted && reply.term > getTermState().first)
+                else if (!reply.voteGranted && reply.term > getTermState().first)
                 {
                     m_currentTerm = reply.term;
                     m_votedFor = -1;
@@ -181,8 +174,43 @@ void Raft::startElection()
 }
 
 
+
+ void Raft::broadcastAppendEntries(const std::string& logEntry)
+ {
+    std::cout << "[Raft" << m_id << "] Broadcasting Append Entires with log: " << logEntry << std::endl;
+    for (size_t id{0}; id<m_peers.size(); id++)
+    {
+        if (static_cast<int32_t>(id) == m_id)
+            continue;
+        
+        AppendEntriesArgs args;
+        {
+            std::lock_guard<std::mutex> lock(m_mu);
+            
+            if (m_dead.load() || m_state != State::LEADER)
+                return;
+            
+            int64_t prevLogIndex = -1;
+            uint32_t prevLogTerm  = 0;
+
+            if (!m_logs.empty()) {
+                prevLogIndex = m_nextindex[id] - 1;
+                prevLogTerm = m_logs[prevLogIndex]->term;
+            }
+                           
+            args = { m_currentTerm, m_id, prevLogIndex, prevLogTerm, logEntry, m_commitIndex};
+        }
+        std::thread ([this, id, args] {
+            AppendEntriesReply reply;
+            bool received = sendAppendEntries(static_cast<int32_t>(id), args, reply);
+        }).detach(); 
+
+    }
+ }
+
 bool Raft::sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
+    std::cout << "[Raft" << m_id << "] Send Append Entries to server: " << id << std::endl;
     m_peers[id]->call("Raft.AppendEntries", args, reply);
     return reply.success;
 }
@@ -193,10 +221,32 @@ bool Raft::sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEn
 */
 void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
+    std::cout << "[Raft" << m_id << "] Received Append Entires" << std::endl;
     std::lock_guard<std::mutex> lock(m_mu);
+    reply.term = m_currentTerm;
 
+    if (args.term < m_currentTerm)
+    {
+        reply.success = false;
+        return;
+    }
+    else if (!m_logs.empty() && args.preLogTerm != m_logs.back()->term)
+    {
+        m_currentTerm = args.term;
+        m_votedFor = -1;
+        reply.success = false;
+        return;
+    }
+    else
+    {
+        // Update term, reset voted for, reset election timer, convert to candidate
+        m_currentTerm = args.term;
+        m_votedFor = -1;
+        m_lastHeartbeat = std::chrono::steady_clock::now();
+        m_state = State::FOLLOWER;
+        reply.success = true;
+    }
     
-    // To implement
 }
 
 
@@ -216,7 +266,12 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
     std::lock_guard<std::mutex> lock(m_mu);
     reply.term = m_currentTerm;
 
-    if (m_state != State::FOLLOWER || args.term < m_currentTerm)
+    if (m_state != State::FOLLOWER)
+    {
+        reply.voteGranted = false;
+        return;
+    }
+    if (args.term < m_currentTerm)
     {
         reply.voteGranted = false;
         return;
@@ -224,11 +279,11 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
     // Also need to check if logs up to date
     else if (m_votedFor == -1 || m_votedFor == args.candidateId)
     {
-        // Grant vote, update term and reset timer
+        // Grant vote, update term and reset election timer
         m_currentTerm = args.term;
         m_votedFor = args.candidateId;
-        m_lastHeartbeat = std::chrono::steady_clock::now();
         reply.voteGranted = true;
+        m_lastHeartbeat = std::chrono::steady_clock::now();
         std::cout << "[Raft" << m_id << "] State: " << static_cast<int>(m_state) << " voting for " << m_votedFor << std::endl;
         return;
     }

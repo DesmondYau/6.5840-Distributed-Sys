@@ -23,10 +23,10 @@ public:
     {
         uint32_t term;
         int32_t leaderId;
-        uint64_t preLogIndex;
+        int64_t preLogIndex;
         uint32_t preLogTerm;
         std::string entries;
-        uint64_t leaderCommit;
+        int64_t leaderCommit;
 
     };
     
@@ -40,7 +40,7 @@ public:
     {
         uint32_t term;
         int32_t candidateId;
-        uint64_t lastLogIndex;
+        int64_t lastLogIndex;
         uint32_t lastLogTerm;
     };
 
@@ -70,6 +70,7 @@ public:
     void appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply);
     void requestVote(const RequestVoteArgs& args, RequestVoteReply& reply);
     void startElection();
+    void broadcastAppendEntries(const std::string& logEntry);
 
     void kill();
 
@@ -83,14 +84,14 @@ private:
 
     int32_t m_id;                                             
     int32_t m_votedFor { -1 };
+    int32_t m_votesGranted;
     uint32_t m_currentTerm { 0 };  
-    uint64_t m_commitIndex { 0 };
-    uint64_t m_lastApplied { 0 };
-    int m_votesGranted;
+    int64_t m_commitIndex { -1 };
+    int64_t m_lastApplied { -1 };
     State m_state { State::FOLLOWER };                                           // Leader, Candidate, Follower
     std::vector<std::shared_ptr<LogEntry>> m_logs;
-    std::vector<uint64_t> m_nextindex;
-    std::vector<uint64_t> m_matchIndex;
+    std::vector<int64_t> m_nextindex;
+    std::vector<int64_t> m_matchIndex;
     std::vector<std::shared_ptr<Endpoint>> m_peers;                              // Vector of RPC endpoint of all peers in the network
     std::shared_ptr<Persister> m_persister;                                      // Persister
     std::shared_ptr<ApplyChannel> m_applyChannel;                                // ApplyChannel tfor sending ApplyMsg for each newly committed log entry   
