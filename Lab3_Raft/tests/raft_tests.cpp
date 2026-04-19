@@ -61,7 +61,7 @@ TEST(RaftTest3A, ReElection) {
     cfg.checkNoLeader();
 
     /*
-        - We keep on fail this test case because we implemented candidate to request VoteRequest automatically.
+        - We keep on failing this test case because we implemented candidate to reject VoteRequest automatically.
         - When raft 2 (leader) and raft 1 are disconnected, raft 1 becomes a candidate. The same goes for raft 0
         - When raft 1 rejoins, both raft 0 and raft 1 are candidate and would not vote for each other -> split vote
         - Solved by implementing logger
