@@ -1,5 +1,5 @@
-/6.824/Lab1_MapReduce/build/CMakeFiles/protolib.dir
-/6.824/Lab1_MapReduce/build/CMakeFiles/master.dir
-/6.824/Lab1_MapReduce/build/CMakeFiles/worker.dir
-/6.824/Lab1_MapReduce/build/CMakeFiles/edit_cache.dir
-/6.824/Lab1_MapReduce/build/CMakeFiles/rebuild_cache.dir
+/6.5840/Lab1_MapReduce/build/CMakeFiles/protolib.dir
+/6.5840/Lab1_MapReduce/build/CMakeFiles/master.dir
+/6.5840/Lab1_MapReduce/build/CMakeFiles/worker.dir
+/6.5840/Lab1_MapReduce/build/CMakeFiles/edit_cache.dir
+/6.5840/Lab1_MapReduce/build/CMakeFiles/rebuild_cache.dir

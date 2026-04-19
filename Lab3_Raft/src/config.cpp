@@ -2,6 +2,7 @@
 #include "raft.hpp"
 #include "helper.hpp"
 #include "persister.hpp"
+#include "logger.hpp"
 #include "rpc/labrpc.hpp"
 #include "rpc/server.hpp"
 #include "rpc/service.hpp"
@@ -32,7 +33,11 @@ Config::Config(int num, bool unreliable)
 Config::~Config() { cleanup(); }
 
 void Config::begin(const std::string& description) {
-    std::cout << description << " ..." << std::endl;
+    std::cout << std::endl 
+              << "---------------------------------"
+              << description << " ..." 
+              << "---------------------------------"
+              << std::endl;
     m_t0 = std::chrono::steady_clock::now();
     m_rpcs0 = m_network->getTotalRPCCount();
     m_bytes0 = m_network->getTotalBytes();
@@ -56,7 +61,7 @@ void Config::end() {
 }
 
 int Config::checkOneLeader() {
-    std::cout << "[Test 2A] CheckOneLeader starting..." << std::endl;
+    std::cout << std::endl << "[Test 3A] CheckOneLeader starting..." << std::endl;
 
     for (int tries{0}; tries < 10; tries++) 
     {
@@ -87,7 +92,7 @@ int Config::checkOneLeader() {
 }
 
 int Config::checkTerms() {
-    std::cout << "[Test 2A] CheckTerms starting..." << std::endl;
+    std::cout << std::endl << "[Test 3A] CheckTerms starting..." << std::endl;
 
     int term = -1;
     for (int i{0}; i < m_num; i++) 
@@ -105,6 +110,8 @@ int Config::checkTerms() {
 }
 
 void Config::checkNoLeader() {
+    std::cout << std::endl << "[Test 3A] CheckNoLeader starting..." << std::endl;
+
     for (int i{0}; i < m_num; i++) {
         if (m_connected[i] && m_rafts[i]) {
             auto [_, state] = m_rafts[i]->getTermState();
@@ -112,6 +119,7 @@ void Config::checkNoLeader() {
                 throw std::runtime_error("expected no leader");
         }
     }
+
 }
 
 std::pair<int,std::string> Config::nCommitted(int index) {
@@ -132,6 +140,7 @@ std::pair<int,std::string> Config::nCommitted(int index) {
     return {count, cmd};
 }
 
+/*
 int Config::one(const std::string& command, int expectedServers, bool retry) {
     // Try to find a leader and submit the command
     int index = -1;
@@ -171,7 +180,7 @@ int Config::one(const std::string& command, int expectedServers, bool retry) {
     if (!retry) throw std::runtime_error("command not committed in time");
     return -1;
 }
-
+*/
 
 void Config::startServer(int i) 
 { 
@@ -207,6 +216,7 @@ void Config::startServer(int i)
 
     // ApplyChannel listens to messages from Raft indicating newly committed messages
     auto applyChannel = std::make_shared<ApplyChannel>();
+    auto sharedLogger = std::make_shared<Logger>();
     std::thread([this, i, applyChannel] {
         while (true) {
             ApplyMsg msg = applyChannel->pop();        // blocking queue pop
@@ -249,7 +259,7 @@ void Config::startServer(int i)
     }).detach();
 
     // Create Raft instance
-    auto raft = std::make_shared<Raft>(endpoints, i, m_persisters[i], applyChannel);
+    auto raft = std::make_shared<Raft>(endpoints, i, m_persisters[i], applyChannel, sharedLogger);
     {
         std::lock_guard<std::mutex> lock(m_mu);
         m_rafts[i] = raft;

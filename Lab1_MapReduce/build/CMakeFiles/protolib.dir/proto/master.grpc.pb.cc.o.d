@@ -1,6 +1,7 @@
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o: \
- /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.cc \
- /usr/include/stdc-predef.h /6.824/Lab1_MapReduce/build/proto/master.pb.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.cc \
+ /usr/include/stdc-predef.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.pb.h \
  /usr/include/c++/13/limits \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -466,7 +467,7 @@ CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o: \
  /usr/local/include/google/protobuf/map.h \
  /usr/local/include/google/protobuf/map_type_handler.h \
  /usr/local/include/google/protobuf/reflection.h \
- /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.h \
  /usr/local/include/grpcpp/generic/async_generic_service.h \
  /usr/local/include/grpc/support/port_platform.h \
  /usr/include/linux/version.h \

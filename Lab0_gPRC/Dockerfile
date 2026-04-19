@@ -15,6 +15,7 @@ RUN mkdir -p /deps/grpc/build && \
 RUN git clone --depth 1 --branch v1.14.0 https://github.com/google/googletest.git
 RUN mkdir -p /deps/googletest/build && \
     cd /deps/googletest/build && \
-    cmake .. && \
-    make -j2 install
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j2 && \
+    make install
 

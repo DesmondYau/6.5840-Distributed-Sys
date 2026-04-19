@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DCARES_STATICLIB
 
-CXX_INCLUDES = -I/6.824/Lab1_MapReduce/include -I/6.824/Lab1_MapReduce/build
+CXX_INCLUDES = -I/6.5840/Lab1_MapReduce/include -I/6.5840/Lab1_MapReduce/build
 
 CXX_FLAGS = -std=gnu++23
 

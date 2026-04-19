@@ -11,7 +11,7 @@ cd mr-tmp || exit 1
 rm -f mr-*
 
 # compile
-(cd /6.824/Lab1_MapReduce/build && cmake .. && make) || exit 1
+# (cd /6.5840/Lab1_MapReduce/build && cmake .. && make) || exit 1
 
 
 failed_any=0

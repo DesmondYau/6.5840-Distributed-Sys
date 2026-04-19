@@ -1,5 +1,5 @@
 CMakeFiles/raft_tests.dir/tests/raft_tests.cpp.o: \
- /6.824/Lab2_Raft/tests/raft_tests.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab3_Raft/tests/raft_tests.cpp /usr/include/stdc-predef.h \
  /usr/local/include/gtest/gtest.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -304,7 +304,7 @@ CMakeFiles/raft_tests.dir/tests/raft_tests.cpp.o: \
  /usr/local/include/gtest/gtest-typed-test.h \
  /usr/local/include/gtest/gtest_pred_impl.h \
  /usr/local/include/gtest/gtest_prod.h \
- /6.824/Lab2_Raft/tests/../src/config.hpp /usr/include/c++/13/queue \
+ /6.5840/Lab3_Raft/tests/../src/config.hpp /usr/include/c++/13/queue \
  /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
  /usr/include/c++/13/bits/deque.tcc /usr/include/c++/13/bits/stl_queue.h \
  /usr/include/c++/13/chrono /usr/include/c++/13/bits/chrono_io.h \

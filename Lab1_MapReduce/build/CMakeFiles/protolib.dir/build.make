@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /6.824/Lab1_MapReduce
+CMAKE_SOURCE_DIR = /6.5840/Lab1_MapReduce
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /6.824/Lab1_MapReduce/build
+CMAKE_BINARY_DIR = /6.5840/Lab1_MapReduce/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/protolib.dir/depend.make
@@ -69,16 +69,16 @@ include CMakeFiles/protolib.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/protolib.dir/flags.make
 
-proto/master.pb.h: /6.824/Lab1_MapReduce/proto/master.proto
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Running cpp protocol buffer compiler on proto/master.proto"
-	/usr/local/bin/protoc-25.1.0 --cpp_out :/6.824/Lab1_MapReduce/build -I /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce/proto/master.proto
+proto/master.pb.h: /6.5840/Lab1_MapReduce/proto/master.proto
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Running cpp protocol buffer compiler on proto/master.proto"
+	/usr/local/bin/protoc-25.1.0 --cpp_out :/6.5840/Lab1_MapReduce/build -I /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce/proto/master.proto
 
 proto/master.pb.cc: proto/master.pb.h
 	@$(CMAKE_COMMAND) -E touch_nocreate proto/master.pb.cc
 
-proto/master.grpc.pb.h: /6.824/Lab1_MapReduce/proto/master.proto
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Running grpc protocol buffer compiler on proto/master.proto"
-	/usr/local/bin/protoc-25.1.0 --grpc_out :/6.824/Lab1_MapReduce/build --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin -I /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce/proto/master.proto
+proto/master.grpc.pb.h: /6.5840/Lab1_MapReduce/proto/master.proto
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Running grpc protocol buffer compiler on proto/master.proto"
+	/usr/local/bin/protoc-25.1.0 --grpc_out :/6.5840/Lab1_MapReduce/build --plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin -I /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce/proto/master.proto
 
 proto/master.grpc.pb.cc: proto/master.grpc.pb.h
 	@$(CMAKE_COMMAND) -E touch_nocreate proto/master.grpc.pb.cc
@@ -86,30 +86,30 @@ proto/master.grpc.pb.cc: proto/master.grpc.pb.h
 CMakeFiles/protolib.dir/proto/master.pb.cc.o: CMakeFiles/protolib.dir/flags.make
 CMakeFiles/protolib.dir/proto/master.pb.cc.o: proto/master.pb.cc
 CMakeFiles/protolib.dir/proto/master.pb.cc.o: CMakeFiles/protolib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/protolib.dir/proto/master.pb.cc.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/protolib.dir/proto/master.pb.cc.o -MF CMakeFiles/protolib.dir/proto/master.pb.cc.o.d -o CMakeFiles/protolib.dir/proto/master.pb.cc.o -c /6.824/Lab1_MapReduce/build/proto/master.pb.cc
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/protolib.dir/proto/master.pb.cc.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/protolib.dir/proto/master.pb.cc.o -MF CMakeFiles/protolib.dir/proto/master.pb.cc.o.d -o CMakeFiles/protolib.dir/proto/master.pb.cc.o -c /6.5840/Lab1_MapReduce/build/proto/master.pb.cc
 
 CMakeFiles/protolib.dir/proto/master.pb.cc.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/protolib.dir/proto/master.pb.cc.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.824/Lab1_MapReduce/build/proto/master.pb.cc > CMakeFiles/protolib.dir/proto/master.pb.cc.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab1_MapReduce/build/proto/master.pb.cc > CMakeFiles/protolib.dir/proto/master.pb.cc.i
 
 CMakeFiles/protolib.dir/proto/master.pb.cc.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/protolib.dir/proto/master.pb.cc.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.824/Lab1_MapReduce/build/proto/master.pb.cc -o CMakeFiles/protolib.dir/proto/master.pb.cc.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab1_MapReduce/build/proto/master.pb.cc -o CMakeFiles/protolib.dir/proto/master.pb.cc.s
 
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o: CMakeFiles/protolib.dir/flags.make
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o: proto/master.grpc.pb.cc
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o: CMakeFiles/protolib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o -MF CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o.d -o CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o -c /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.cc
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o -MF CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o.d -o CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o -c /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.cc
 
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.cc > CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.cc > CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.i
 
 CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.cc -o CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.cc -o CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.s
 
 # Object files for target protolib
 protolib_OBJECTS = \
@@ -123,7 +123,7 @@ libprotolib.a: CMakeFiles/protolib.dir/proto/master.pb.cc.o
 libprotolib.a: CMakeFiles/protolib.dir/proto/master.grpc.pb.cc.o
 libprotolib.a: CMakeFiles/protolib.dir/build.make
 libprotolib.a: CMakeFiles/protolib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX static library libprotolib.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX static library libprotolib.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/protolib.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/protolib.dir/link.txt --verbose=$(VERBOSE)
 
@@ -139,6 +139,6 @@ CMakeFiles/protolib.dir/depend: proto/master.grpc.pb.cc
 CMakeFiles/protolib.dir/depend: proto/master.grpc.pb.h
 CMakeFiles/protolib.dir/depend: proto/master.pb.cc
 CMakeFiles/protolib.dir/depend: proto/master.pb.h
-	cd /6.824/Lab1_MapReduce/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce/build /6.824/Lab1_MapReduce/build /6.824/Lab1_MapReduce/build/CMakeFiles/protolib.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /6.5840/Lab1_MapReduce/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce/build /6.5840/Lab1_MapReduce/build /6.5840/Lab1_MapReduce/build/CMakeFiles/protolib.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/protolib.dir/depend
 

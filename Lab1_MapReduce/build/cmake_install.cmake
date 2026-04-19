@@ -1,4 +1,4 @@
-# Install script for directory: /6.824/Lab1_MapReduce
+# Install script for directory: /6.5840/Lab1_MapReduce
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/6.824/Lab1_MapReduce/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/6.5840/Lab1_MapReduce/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

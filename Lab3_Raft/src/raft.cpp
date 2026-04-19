@@ -4,10 +4,12 @@
 #include "raft.hpp"
 #include "config.hpp"
 #include "persister.hpp"
+#include "logger.hpp"
 #include "./rpc/endpoint.hpp"
 
 
-Raft::Raft(const std::vector<std::shared_ptr<Endpoint>>& peers, int32_t id, std::shared_ptr<Persister> persister, std::shared_ptr<ApplyChannel> applyChannel)
+Raft::Raft(const std::vector<std::shared_ptr<Endpoint>>& peers, int32_t id, std::shared_ptr<Persister> persister, 
+           std::shared_ptr<ApplyChannel> applyChannel, std::shared_ptr<Logger> logger)
     : m_peers { peers }
     , m_id { id }
     , m_votedFor { -1 }
@@ -17,10 +19,11 @@ Raft::Raft(const std::vector<std::shared_ptr<Endpoint>>& peers, int32_t id, std:
     , m_state { State::FOLLOWER }
     , m_persister { persister }
     , m_applyChannel { applyChannel }
+    , m_logger { logger }
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(400, 600);
+    std::uniform_int_distribution<> dist(300, 500);
     m_electionTimeout = std::chrono::milliseconds(dist(gen));
 
     {
@@ -29,7 +32,10 @@ Raft::Raft(const std::vector<std::shared_ptr<Endpoint>>& peers, int32_t id, std:
         m_lastHeartbeat = std::chrono::steady_clock::now();
     }
     
-    // Start our raft thread
+    // Push in dummy log with term 0
+    m_logs.push_back(std::make_shared<LogEntry>("", 0));
+
+    // Start raft thread
     m_raftThread = std::thread(&Raft::startRaft, this);
 }
 
@@ -62,8 +68,8 @@ void Raft::startRaft()
                 return;
             else if (std::chrono::steady_clock::now() > m_lastHeartbeat + m_electionTimeout)
             {
-                m_state = Raft::State::CANDIDATE;
                 lock.unlock();
+                promoteToCandidate();
                 startElection();
                 lock.lock();
             }
@@ -78,10 +84,11 @@ void Raft::startRaft()
                 return;
             else if (m_votesGranted > m_peers.size()/2)
             {
-                std::cout << "[Raft" << m_id << "] Became leader!" << std::endl;
-                m_state = State::LEADER;
+                lock.unlock();
+                promoteToLeader();
+                lock.lock();
             
-                // Initialize nextIndex vector and matchIndex vector
+                // Initialize nextIndex vector and matchIndex vector when first becoming leader
                 auto lastLogIndex = static_cast<uint64_t>(m_logs.size()-1);
                 for (size_t i{0}; i<m_peers.size(); i++)
                 {
@@ -105,7 +112,8 @@ void Raft::startRaft()
         }
         else
         {
-            std::cerr << "[Raft" << m_id << "] Invalid state. Exiting raft..." << std::endl;
+            LogEvent event(LogEvent::Type::ERROR, m_id, m_currentTerm, "Invalid State!");
+            m_logger->log(LogLevel::ERROR, event);
             return;
         }
     }
@@ -118,7 +126,8 @@ void Raft::startRaft()
 */
 void Raft::startElection()
 {
-    std::cout << "[Raft" << m_id << "] Starting election" << std::endl;
+    LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Starting Election with term " + std::to_string(m_currentTerm+1));
+    m_logger->log(LogLevel::INFO, event);
 
     // Increment current term. vote for self, reset election timer
     {
@@ -129,10 +138,8 @@ void Raft::startElection()
         m_lastHeartbeat = std::chrono::steady_clock::now();
     }
 
-    std::cout << "[Raft" << m_id << "] Sending requestVote RPC with term " << m_currentTerm << std::endl;
-    int64_t lastLogIndex = m_logs.empty() ? -1 : static_cast<uint64_t>(m_logs.size() - 1);
-    uint32_t lastLogTerm  = m_logs.empty() ? 0 : static_cast<uint32_t>(m_logs.back()->term);
-    
+    uint64_t lastLogIndex = static_cast<uint64_t>(m_logs.size() - 1);
+    uint32_t lastLogTerm  = m_logs.back()->term;
     for (size_t id{0}; id<m_peers.size(); id++)
     {
         // Request vote from all peers except itself
@@ -156,9 +163,11 @@ void Raft::startElection()
                 std::lock_guard<std::mutex> lock(m_mu);
                 if (m_dead.load() || m_state != State::CANDIDATE)
                     return;
-                else if (reply.voteGranted)
+                else if (reply.voteGranted == true)
                 {
-                    std::cout << "[Raft" << m_id << "] Received vote from " << id << " " << reply.voteGranted << std::endl;
+                    LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Received true vote from server " + std::to_string(id));
+                    m_logger->log(LogLevel::INFO, event);  
+
                     m_votesGranted++;
                 }
                 else if (!reply.voteGranted && reply.term > getTermState().first)
@@ -174,10 +183,17 @@ void Raft::startElection()
 }
 
 
+void Raft::broadcastAppendEntries(const std::string& logEntry)
+{
+    LogEvent event
+    {
+        logEntry.empty() ? LogEvent::Type::HEARTBEAT : LogEvent::Type::REPLICATION,
+        m_id,
+        m_currentTerm,
+        logEntry.empty() ? "Broadcasting Heartbeat" : "Broadcasting AppendEntries with entry: " + logEntry
+    };
+    m_logger->log(LogLevel::DEBUG, event);
 
- void Raft::broadcastAppendEntries(const std::string& logEntry)
- {
-    std::cout << "[Raft" << m_id << "] Broadcasting Append Entires with log: " << logEntry << std::endl;
     for (size_t id{0}; id<m_peers.size(); id++)
     {
         if (static_cast<int32_t>(id) == m_id)
@@ -187,16 +203,11 @@ void Raft::startElection()
         {
             std::lock_guard<std::mutex> lock(m_mu);
             
-            if (m_dead.load() || m_state != State::LEADER)
+            if (m_dead.load() || m_state != State::LEADER) 
                 return;
             
-            int64_t prevLogIndex = -1;
-            uint32_t prevLogTerm  = 0;
-
-            if (!m_logs.empty()) {
-                prevLogIndex = m_nextindex[id] - 1;
-                prevLogTerm = m_logs[prevLogIndex]->term;
-            }
+            uint64_t prevLogIndex = m_nextindex[id] - 1;
+            uint32_t prevLogTerm  = m_logs[prevLogIndex]->term;
                            
             args = { m_currentTerm, m_id, prevLogIndex, prevLogTerm, logEntry, m_commitIndex};
         }
@@ -206,13 +217,12 @@ void Raft::startElection()
         }).detach(); 
 
     }
- }
+}
 
 bool Raft::sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
-    std::cout << "[Raft" << m_id << "] Send Append Entries to server: " << id << std::endl;
-    m_peers[id]->call("Raft.AppendEntries", args, reply);
-    return reply.success;
+    return m_peers[id]->call("Raft.AppendEntries", args, reply);
+    
 }
 
 /*
@@ -221,40 +231,47 @@ bool Raft::sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEn
 */
 void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
-    std::cout << "[Raft" << m_id << "] Received Append Entires" << std::endl;
     std::lock_guard<std::mutex> lock(m_mu);
     reply.term = m_currentTerm;
+    reply.success = false;
 
-    if (args.term < m_currentTerm)
+    // Terms in AppendEntries RPC < current term of raft
+    if (m_currentTerm > args.term)
     {
         reply.success = false;
-        return;
-    }
-    else if (!m_logs.empty() && args.preLogTerm != m_logs.back()->term)
-    {
-        m_currentTerm = args.term;
-        m_votedFor = -1;
-        reply.success = false;
-        return;
     }
     else
     {
-        // Update term, reset voted for, reset election timer, convert to candidate
-        m_currentTerm = args.term;
-        m_votedFor = -1;
-        m_lastHeartbeat = std::chrono::steady_clock::now();
-        m_state = State::FOLLOWER;
-        reply.success = true;
-    }
-    
+        if (m_currentTerm < args.term)
+        {
+            m_currentTerm = args.term;
+            m_votedFor = -1;
+            m_state = State::FOLLOWER;
+        }
+
+        if (m_logs[args.preLogIndex]->term != args.preLogTerm)
+        {
+            reply.success = false;
+            // delete the existing entry and all that follow it
+        }
+        else
+        {
+            reply.success = true;
+            m_lastHeartbeat = std::chrono::steady_clock::now();
+            // append new entries not already in the log
+            // if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+        }
+            
+    }   
 }
 
 
 bool Raft::sendRequestVote(int32_t id, const RequestVoteArgs& args, RequestVoteReply& reply)
 {
-    std::cout << "[Raft" << m_id << "] Sending requestVote RPC to server " << id << std::endl;
-    m_peers[id]->call("Raft.RequestVote", args, reply);
-    return reply.voteGranted;
+    LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Sending request vote to server " + std::to_string(id));
+    m_logger->log(LogLevel::DEBUG, event);
+
+    return m_peers[id]->call("Raft.RequestVote", args, reply);
 }
 
 /*
@@ -265,33 +282,37 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
 {
     std::lock_guard<std::mutex> lock(m_mu);
     reply.term = m_currentTerm;
+    reply.voteGranted = false;
 
-    if (m_state != State::FOLLOWER)
+    if (m_currentTerm > args.term)
     {
+        LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Reject requestVote: Candidate has lower term");
+        m_logger->log(LogLevel::DEBUG, event);
+
+        reply.term = m_currentTerm;
         reply.voteGranted = false;
-        return;
-    }
-    if (args.term < m_currentTerm)
-    {
-        reply.voteGranted = false;
-        return;
-    }
-    // Also need to check if logs up to date
-    else if (m_votedFor == -1 || m_votedFor == args.candidateId)
-    {
-        // Grant vote, update term and reset election timer
-        m_currentTerm = args.term;
-        m_votedFor = args.candidateId;
-        reply.voteGranted = true;
-        m_lastHeartbeat = std::chrono::steady_clock::now();
-        std::cout << "[Raft" << m_id << "] State: " << static_cast<int>(m_state) << " voting for " << m_votedFor << std::endl;
-        return;
     }
     else
     {
-        reply.voteGranted = false;
-    }
+        if (m_currentTerm < args.term)
+        {
+            m_currentTerm = args.term;
+            m_votedFor = -1;
+            m_state = State::FOLLOWER;
+        }
         
+        bool logsUpToDate = (args.lastLogTerm < m_logs.back()->term || 
+                             args.lastLogTerm == m_logs.back()->term && args.lastLogIndex <= static_cast<uint64_t>(m_logs.size()-1));
+        if (m_votedFor == -1 || m_votedFor == args.candidateId || logsUpToDate)
+        {
+            reply.voteGranted = true;
+            m_votedFor = args.candidateId;
+            m_lastHeartbeat = std::chrono::steady_clock::now();
+
+            LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Voted for " + std::to_string(m_votedFor));
+            m_logger->log(LogLevel::INFO, event);
+        }
+    }        
 }
 
 
@@ -307,5 +328,24 @@ std::pair<uint32_t, Raft::State> Raft::getTermState()
     std::lock_guard<std::mutex> lock(m_mu);
     return std::pair<uint32_t, State>{ m_currentTerm, m_state };
 }
+
+void Raft::promoteToLeader()
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    m_state = State::LEADER;
+    LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to LEADER");
+    m_logger->log(LogLevel::INFO, event);
+
+}
+
+
+void Raft::promoteToCandidate()
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    m_state = Raft::State::CANDIDATE;
+    LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to CANDIDATE");
+    m_logger->log(LogLevel::INFO, event);
+}
+
 
 

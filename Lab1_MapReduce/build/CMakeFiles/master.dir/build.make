@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /6.824/Lab1_MapReduce
+CMAKE_SOURCE_DIR = /6.5840/Lab1_MapReduce
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /6.824/Lab1_MapReduce/build
+CMAKE_BINARY_DIR = /6.5840/Lab1_MapReduce/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/master.dir/depend.make
@@ -70,46 +70,46 @@ include CMakeFiles/master.dir/progress.make
 include CMakeFiles/master.dir/flags.make
 
 CMakeFiles/master.dir/src/server.cpp.o: CMakeFiles/master.dir/flags.make
-CMakeFiles/master.dir/src/server.cpp.o: /6.824/Lab1_MapReduce/src/server.cpp
+CMakeFiles/master.dir/src/server.cpp.o: /6.5840/Lab1_MapReduce/src/server.cpp
 CMakeFiles/master.dir/src/server.cpp.o: CMakeFiles/master.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/master.dir/src/server.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/server.cpp.o -MF CMakeFiles/master.dir/src/server.cpp.o.d -o CMakeFiles/master.dir/src/server.cpp.o -c /6.824/Lab1_MapReduce/src/server.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/master.dir/src/server.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/server.cpp.o -MF CMakeFiles/master.dir/src/server.cpp.o.d -o CMakeFiles/master.dir/src/server.cpp.o -c /6.5840/Lab1_MapReduce/src/server.cpp
 
 CMakeFiles/master.dir/src/server.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/master.dir/src/server.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.824/Lab1_MapReduce/src/server.cpp > CMakeFiles/master.dir/src/server.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab1_MapReduce/src/server.cpp > CMakeFiles/master.dir/src/server.cpp.i
 
 CMakeFiles/master.dir/src/server.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/master.dir/src/server.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.824/Lab1_MapReduce/src/server.cpp -o CMakeFiles/master.dir/src/server.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab1_MapReduce/src/server.cpp -o CMakeFiles/master.dir/src/server.cpp.s
 
 CMakeFiles/master.dir/src/master_service.cpp.o: CMakeFiles/master.dir/flags.make
-CMakeFiles/master.dir/src/master_service.cpp.o: /6.824/Lab1_MapReduce/src/master_service.cpp
+CMakeFiles/master.dir/src/master_service.cpp.o: /6.5840/Lab1_MapReduce/src/master_service.cpp
 CMakeFiles/master.dir/src/master_service.cpp.o: CMakeFiles/master.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/master.dir/src/master_service.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/master_service.cpp.o -MF CMakeFiles/master.dir/src/master_service.cpp.o.d -o CMakeFiles/master.dir/src/master_service.cpp.o -c /6.824/Lab1_MapReduce/src/master_service.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/master.dir/src/master_service.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/master_service.cpp.o -MF CMakeFiles/master.dir/src/master_service.cpp.o.d -o CMakeFiles/master.dir/src/master_service.cpp.o -c /6.5840/Lab1_MapReduce/src/master_service.cpp
 
 CMakeFiles/master.dir/src/master_service.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/master.dir/src/master_service.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.824/Lab1_MapReduce/src/master_service.cpp > CMakeFiles/master.dir/src/master_service.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab1_MapReduce/src/master_service.cpp > CMakeFiles/master.dir/src/master_service.cpp.i
 
 CMakeFiles/master.dir/src/master_service.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/master.dir/src/master_service.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.824/Lab1_MapReduce/src/master_service.cpp -o CMakeFiles/master.dir/src/master_service.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab1_MapReduce/src/master_service.cpp -o CMakeFiles/master.dir/src/master_service.cpp.s
 
 CMakeFiles/master.dir/src/master.cpp.o: CMakeFiles/master.dir/flags.make
-CMakeFiles/master.dir/src/master.cpp.o: /6.824/Lab1_MapReduce/src/master.cpp
+CMakeFiles/master.dir/src/master.cpp.o: /6.5840/Lab1_MapReduce/src/master.cpp
 CMakeFiles/master.dir/src/master.cpp.o: CMakeFiles/master.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/master.dir/src/master.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/master.cpp.o -MF CMakeFiles/master.dir/src/master.cpp.o.d -o CMakeFiles/master.dir/src/master.cpp.o -c /6.824/Lab1_MapReduce/src/master.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/master.dir/src/master.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/master.dir/src/master.cpp.o -MF CMakeFiles/master.dir/src/master.cpp.o.d -o CMakeFiles/master.dir/src/master.cpp.o -c /6.5840/Lab1_MapReduce/src/master.cpp
 
 CMakeFiles/master.dir/src/master.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/master.dir/src/master.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.824/Lab1_MapReduce/src/master.cpp > CMakeFiles/master.dir/src/master.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab1_MapReduce/src/master.cpp > CMakeFiles/master.dir/src/master.cpp.i
 
 CMakeFiles/master.dir/src/master.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/master.dir/src/master.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.824/Lab1_MapReduce/src/master.cpp -o CMakeFiles/master.dir/src/master.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab1_MapReduce/src/master.cpp -o CMakeFiles/master.dir/src/master.cpp.s
 
 # Object files for target master
 master_OBJECTS = \
@@ -219,7 +219,7 @@ master: /usr/local/lib/libabsl_throw_delegate.a
 master: /usr/local/lib/libabsl_raw_logging_internal.a
 master: /usr/local/lib/libabsl_log_severity.a
 master: CMakeFiles/master.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/6.824/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable master"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/6.5840/Lab1_MapReduce/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable master"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/master.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -231,6 +231,6 @@ CMakeFiles/master.dir/clean:
 .PHONY : CMakeFiles/master.dir/clean
 
 CMakeFiles/master.dir/depend:
-	cd /6.824/Lab1_MapReduce/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce /6.824/Lab1_MapReduce/build /6.824/Lab1_MapReduce/build /6.824/Lab1_MapReduce/build/CMakeFiles/master.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /6.5840/Lab1_MapReduce/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce /6.5840/Lab1_MapReduce/build /6.5840/Lab1_MapReduce/build /6.5840/Lab1_MapReduce/build/CMakeFiles/master.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/master.dir/depend
 

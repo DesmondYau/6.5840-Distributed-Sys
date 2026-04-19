@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/6.824/Lab1_MapReduce/src/worker.cpp" "CMakeFiles/worker.dir/src/worker.cpp.o" "gcc" "CMakeFiles/worker.dir/src/worker.cpp.o.d"
+  "/6.5840/Lab1_MapReduce/src/worker.cpp" "CMakeFiles/worker.dir/src/worker.cpp.o" "gcc" "CMakeFiles/worker.dir/src/worker.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

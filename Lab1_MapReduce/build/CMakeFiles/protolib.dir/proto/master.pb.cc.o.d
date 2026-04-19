@@ -1,6 +1,7 @@
 CMakeFiles/protolib.dir/proto/master.pb.cc.o: \
- /6.824/Lab1_MapReduce/build/proto/master.pb.cc \
- /usr/include/stdc-predef.h /6.824/Lab1_MapReduce/build/proto/master.pb.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.pb.cc \
+ /usr/include/stdc-predef.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.pb.h \
  /usr/include/c++/13/limits \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

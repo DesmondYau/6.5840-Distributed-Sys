@@ -1,6 +1,6 @@
 CMakeFiles/raft_tests.dir/src/persister.cpp.o: \
- /6.824/Lab2_Raft/src/persister.cpp /usr/include/stdc-predef.h \
- /6.824/Lab2_Raft/src/persister.hpp /usr/include/c++/13/vector \
+ /6.5840/Lab3_Raft/src/persister.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab3_Raft/src/persister.hpp /usr/include/c++/13/vector \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

@@ -1,6 +1,6 @@
 CMakeFiles/raft_tests.dir/src/rpc/labrpc.cpp.o: \
- /6.824/Lab2_Raft/src/rpc/labrpc.cpp /usr/include/stdc-predef.h \
- /6.824/Lab2_Raft/src/rpc/labrpc.hpp /usr/include/c++/13/map \
+ /6.5840/Lab3_Raft/src/rpc/labrpc.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab3_Raft/src/rpc/labrpc.hpp /usr/include/c++/13/map \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -250,9 +250,9 @@ CMakeFiles/raft_tests.dir/src/rpc/labrpc.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/semaphore.h \
  /usr/include/c++/13/bits/atomic_futex.h \
  /usr/include/c++/13/bits/std_function.h \
- /6.824/Lab2_Raft/src/rpc/endpoint.hpp \
- /6.824/Lab2_Raft/src/rpc/../helper.hpp \
- /6.824/Lab2_Raft/src/rpc/../raft.hpp /usr/include/c++/13/iostream \
+ /6.5840/Lab3_Raft/src/rpc/endpoint.hpp \
+ /6.5840/Lab3_Raft/src/rpc/../helper.hpp \
+ /6.5840/Lab3_Raft/src/rpc/../raft.hpp /usr/include/c++/13/iostream \
  /usr/include/c++/13/istream /usr/include/c++/13/bits/istream.tcc \
  /usr/include/c++/13/chrono /usr/include/c++/13/sstream \
  /usr/include/c++/13/bits/sstream.tcc /usr/include/c++/13/bits/stl_algo.h \
@@ -270,7 +270,7 @@ CMakeFiles/raft_tests.dir/src/rpc/labrpc.cpp.o: \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
  /usr/include/c++/13/span /usr/include/c++/13/variant \
- /6.824/Lab2_Raft/src/rpc/../../include/json.hpp \
+ /6.5840/Lab3_Raft/src/rpc/../../include/json.hpp \
  /usr/include/c++/13/algorithm /usr/include/c++/13/bits/ranges_algo.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/c++/13/functional /usr/include/c++/13/unordered_map \
@@ -298,5 +298,5 @@ CMakeFiles/raft_tests.dir/src/rpc/labrpc.cpp.o: \
  /usr/include/c++/13/bits/fs_path.h /usr/include/c++/13/codecvt \
  /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
  /usr/include/c++/13/ranges /usr/include/c++/13/any \
- /6.824/Lab2_Raft/src/rpc/server.hpp /6.824/Lab2_Raft/src/rpc/service.hpp \
- /usr/include/c++/13/thread
+ /6.5840/Lab3_Raft/src/rpc/server.hpp \
+ /6.5840/Lab3_Raft/src/rpc/service.hpp /usr/include/c++/13/thread

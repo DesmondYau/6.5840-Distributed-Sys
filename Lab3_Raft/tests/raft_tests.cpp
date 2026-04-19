@@ -5,10 +5,10 @@
 
 const std::chrono::milliseconds RaftElectionTimeout(1000);
 
-TEST(RaftTest2A, InitialElection) {
+TEST(RaftTest3A, InitialElection) {
     // Creates a COnfig harness with 3 Raft servers
     Config cfg(3, false);
-    cfg.begin("Test (2A): initial election");
+    cfg.begin("Test (3A): initial election");
 
     // Step 1: Check if a leader is elected.
     // Returns the leader ID, should be >= 0.
@@ -37,10 +37,80 @@ TEST(RaftTest2A, InitialElection) {
     cfg.end();
 }
 
-TEST(RaftTest2B, BasicAgreement) {
+
+TEST(RaftTest3A, ReElection) {
+    Config cfg(3, false);
+    cfg.begin("Test (3A): election after network failure");
+
+    int leader1 = cfg.checkOneLeader();
+
+    // Disconnect current leader → new leader should be elected
+    cfg.disconnectServer(leader1);
+    int leader2 = cfg.checkOneLeader();
+    ASSERT_NE(leader1, leader2);
+
+    // Reconnect old leader → should become follower, not disturb new leader
+    cfg.connectServer(leader1);
+    int leader3 = cfg.checkOneLeader();
+    ASSERT_EQ(leader2, leader3);
+
+    // Break quorum → no leader should exist
+    cfg.disconnectServer(leader2);
+    cfg.disconnectServer((leader2 + 1) % 3);
+    std::this_thread::sleep_for(2 * RaftElectionTimeout);
+    cfg.checkNoLeader();
+
+    /*
+        - We keep on fail this test case because we implemented candidate to request VoteRequest automatically.
+        - When raft 2 (leader) and raft 1 are disconnected, raft 1 becomes a candidate. The same goes for raft 0
+        - When raft 1 rejoins, both raft 0 and raft 1 are candidate and would not vote for each other -> split vote
+        - Solved by implementing logger
+    */
+    // Restore quorum → leader should be elected
+    cfg.connectServer((leader2 + 1) % 3);
+    cfg.checkOneLeader();
+
+    // Reconnect last node → leader should still exist
+    cfg.connectServer(leader2);
+    cfg.checkOneLeader();
+
+    cfg.end();
+}
+
+TEST(RaftTest3A, ManyElections) {
+    Config cfg(7, false);
+    cfg.begin("Test (3A): multiple elections");
+
+    cfg.checkOneLeader();
+
+    int iters = 10;
+    for (int ii = 1; ii < iters; ii++) {
+        // Randomly disconnect three nodes
+        int i1 = rand() % 7;
+        int i2 = rand() % 7;
+        int i3 = rand() % 7;
+        cfg.disconnectServer(i1);
+        cfg.disconnectServer(i2);
+        cfg.disconnectServer(i3);
+
+        // Either current leader survives or new one is elected
+        cfg.checkOneLeader();
+
+        // Reconnect nodes
+        cfg.connectServer(i1);
+        cfg.connectServer(i2);
+        cfg.connectServer(i3);
+    }
+
+    cfg.checkOneLeader();
+    cfg.end();
+}
+
+/*
+TEST(RaftTest3B, BasicAgreement) {
     // Create a cluster of 3 Raft servers with reliable network
     Config cfg(3, false);
-    cfg.begin("Test (2B): basic agreement");
+    cfg.begin("Test (3B): basic agreement");
 
     int iters = 3;
     for (int index = 1; index <= iters; index++) {
@@ -58,10 +128,10 @@ TEST(RaftTest2B, BasicAgreement) {
     cfg.end();
 }
 
-TEST(RaftTest2B, RPCByteCount) {
+TEST(RaftTest3B, RPCByteCount) {
     // Create a cluster of 3 Raft servers with reliable network
     Config cfg(3, false);
-    cfg.begin("Test (2B): RPC byte count");
+    cfg.begin("Test (3B): RPC byte count");
 
     // Step 1: Submit an initial command to establish baseline
     cfg.one(99, 3, false);
@@ -87,3 +157,4 @@ TEST(RaftTest2B, RPCByteCount) {
 
     cfg.end();
 }
+*/

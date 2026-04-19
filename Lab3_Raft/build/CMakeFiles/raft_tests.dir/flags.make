@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/6.824/Lab2_Raft/include
+CXX_INCLUDES = -I/6.5840/Lab3_Raft/include
 
-CXX_FLAGS = -std=gnu++23
+CXX_FLAGS = -g -std=gnu++23
 

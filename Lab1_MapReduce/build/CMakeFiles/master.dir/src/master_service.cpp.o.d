@@ -1,6 +1,6 @@
 CMakeFiles/master.dir/src/master_service.cpp.o: \
- /6.824/Lab1_MapReduce/src/master_service.cpp /usr/include/stdc-predef.h \
- /6.824/Lab1_MapReduce/src/master_service.hpp \
+ /6.5840/Lab1_MapReduce/src/master_service.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab1_MapReduce/src/master_service.hpp \
  /usr/local/include/grpcpp/grpcpp.h /usr/local/include/grpc/grpc.h \
  /usr/local/include/grpc/support/port_platform.h /usr/include/features.h \
  /usr/include/features-time64.h \
@@ -454,8 +454,8 @@ CMakeFiles/master.dir/src/master_service.cpp.o: \
  /usr/local/include/grpcpp/security/authorization_policy_provider.h \
  /usr/local/include/grpcpp/server_posix.h \
  /usr/local/include/grpcpp/version_info.h \
- /6.824/Lab1_MapReduce/build/proto/master.grpc.pb.h \
- /6.824/Lab1_MapReduce/build/proto/master.pb.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.grpc.pb.h \
+ /6.5840/Lab1_MapReduce/build/proto/master.pb.h \
  /usr/local/include/google/protobuf/port_def.inc \
  /usr/local/include/google/protobuf/port_undef.inc \
  /usr/local/include/google/protobuf/io/coded_stream.h \
@@ -584,4 +584,4 @@ CMakeFiles/master.dir/src/master_service.cpp.o: \
  /usr/local/include/grpcpp/support/proto_buffer_reader.h \
  /usr/local/include/grpcpp/support/proto_buffer_writer.h \
  /usr/local/include/grpcpp/support/stub_options.h \
- /6.824/Lab1_MapReduce/src/master.hpp
+ /6.5840/Lab1_MapReduce/src/master.hpp

@@ -1,5 +1,5 @@
 CMakeFiles/master.dir/src/master.cpp.o: \
- /6.824/Lab1_MapReduce/src/master.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab1_MapReduce/src/master.cpp /usr/include/stdc-predef.h \
  /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -220,5 +220,5 @@ CMakeFiles/master.dir/src/master.cpp.o: \
  /usr/include/c++/13/bits/this_thread_sleep.h \
  /usr/include/x86_64-linux-gnu/sys/time.h /usr/include/semaphore.h \
  /usr/include/x86_64-linux-gnu/bits/semaphore.h \
- /6.824/Lab1_MapReduce/src/master.hpp /usr/include/c++/13/mutex \
+ /6.5840/Lab1_MapReduce/src/master.hpp /usr/include/c++/13/mutex \
  /usr/include/c++/13/bits/unique_lock.h

@@ -1,6 +1,6 @@
 CMakeFiles/raft_tests.dir/src/config.cpp.o: \
- /6.824/Lab2_Raft/src/config.cpp /usr/include/stdc-predef.h \
- /6.824/Lab2_Raft/src/config.hpp /usr/include/c++/13/queue \
+ /6.5840/Lab3_Raft/src/config.cpp /usr/include/stdc-predef.h \
+ /6.5840/Lab3_Raft/src/config.hpp /usr/include/c++/13/queue \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -236,10 +236,10 @@ CMakeFiles/raft_tests.dir/src/config.cpp.o: \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
  /usr/include/c++/13/span /usr/include/c++/13/variant \
- /6.824/Lab2_Raft/src/raft.hpp /usr/include/c++/13/iostream \
- /6.824/Lab2_Raft/src/helper.hpp /6.824/Lab2_Raft/src/persister.hpp \
- /6.824/Lab2_Raft/src/rpc/labrpc.hpp /usr/include/c++/13/random \
- /usr/include/c++/13/cmath /usr/include/math.h \
+ /6.5840/Lab3_Raft/src/raft.hpp /usr/include/c++/13/iostream \
+ /6.5840/Lab3_Raft/src/helper.hpp /6.5840/Lab3_Raft/src/persister.hpp \
+ /6.5840/Lab3_Raft/src/logger.hpp /6.5840/Lab3_Raft/src/rpc/labrpc.hpp \
+ /usr/include/c++/13/random /usr/include/c++/13/cmath /usr/include/math.h \
  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
@@ -268,8 +268,8 @@ CMakeFiles/raft_tests.dir/src/config.cpp.o: \
  /usr/include/c++/13/pstl/glue_numeric_defs.h /usr/include/c++/13/future \
  /usr/include/c++/13/bits/atomic_futex.h \
  /usr/include/c++/13/bits/std_function.h \
- /6.824/Lab2_Raft/src/rpc/server.hpp /6.824/Lab2_Raft/src/rpc/service.hpp \
- /usr/include/c++/13/unordered_map \
+ /6.5840/Lab3_Raft/src/rpc/server.hpp \
+ /6.5840/Lab3_Raft/src/rpc/service.hpp /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
  /usr/include/c++/13/bits/hashtable.h \
  /usr/include/c++/13/bits/hashtable_policy.h \

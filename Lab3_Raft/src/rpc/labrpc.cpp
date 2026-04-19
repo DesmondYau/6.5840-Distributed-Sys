@@ -28,9 +28,9 @@ Network::Network()
 
             // Process asynchronously
             std::thread([this, xreq]() {
-                ReplyMsg replyMsg;
-                this->deliver(xreq->endpointName, xreq->rpcType, xreq->args, replyMsg);
-                xreq->prom.set_value(replyMsg);
+                auto replyMsgPtr = std::make_shared<ReplyMsg>();
+                this->deliver(xreq->endpointName, xreq->rpcType, xreq->args, replyMsgPtr);
+                xreq->prom.set_value(*replyMsgPtr);
             }).detach();
         }
     });
@@ -61,7 +61,7 @@ void Network::send(const std::string& endpointName, const std::string& rpcType, 
 }
 
 
-void Network::deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, ReplyMsg& replyMsg)
+void Network::deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::shared_ptr<ReplyMsg> replyMsgPtr)
 {
     /*
         Ensure RPC endpoint is enabled, connected and the server exists    
@@ -78,9 +78,9 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
         else
         {
             int ms = m_longDelays ? rand() % 7000 : rand() % 100;
-            std::thread([&replyMsg, ms]() {
+            std::thread([replyMsgPtr, ms]() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-                replyMsg = { false, "" };
+                *replyMsgPtr = { false, "" };
             }).detach();
             return;
         }
@@ -154,25 +154,25 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
     */
     serverDead = isServerDead(endpointName, serverName, server);
     if (!replyOK || serverDead) {                                       // server was killed or no reply: simulate timeout
-        replyMsg = {false, ""};                                                 
+        *replyMsgPtr = {false, ""};                                                 
         return;
     } 
     else if (!m_reliable && rand() % 1000 < 100)                        // Simulate unrealiable network. Drop the reply randomly 
     {
-        replyMsg = {false, ""};                                 
+        *replyMsgPtr = {false, ""};                                 
         return;
     } 
     else if (m_longReordering && rand() % 1000 < 600)                   // Simulate out-of-order delivery. Delay the response for a while
     {
         int ms = 200 + (rand() % (1 + rand() % 2000));
-        std::thread([this, localReplyMsg, &replyMsg, ms]() {
+        std::thread([this, localReplyMsg, replyMsgPtr, ms]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-            replyMsg = localReplyMsg;
+            *replyMsgPtr = localReplyMsg;
         }).detach();
     } 
     else                                                                 // normal reply
     {
-        replyMsg = localReplyMsg;
+        *replyMsgPtr = localReplyMsg;
     }
 }
 
