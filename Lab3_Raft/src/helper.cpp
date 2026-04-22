@@ -4,6 +4,16 @@
 #include "../include/json.hpp"
 
 
+// Note: qualify with Raft::LogEntry, not namespace Raft
+void to_json(nlohmann::json& j, const Raft::LogEntry& entry) {
+    j = nlohmann::json{{"Command", entry.command}, {"Term", entry.term}};
+}
+
+void from_json(const nlohmann::json& j, Raft::LogEntry& entry) {
+    j.at("Command").get_to(entry.command);
+    j.at("Term").get_to(entry.term);
+}
+
 void decodeArgs(const std::string& args, Raft::AppendEntriesArgs& a)
 {
     nlohmann::json j = nlohmann::json::parse(args);
@@ -11,7 +21,7 @@ void decodeArgs(const std::string& args, Raft::AppendEntriesArgs& a)
     a.leaderId    = j["LeaderId"].get<uint32_t>();
     a.preLogIndex = j["PreLogIndex"].get<uint64_t>();
     a.preLogTerm  = j["PreLogTerm"].get<uint32_t>();
-    a.entries     = j["Entries"].get<std::string>();
+    a.entries     = j["Entries"].get<std::vector<Raft::LogEntry>>(); 
     a.leaderCommit= j["LeaderCommit"].get<uint64_t>();
 }
 
@@ -24,11 +34,12 @@ void decodeArgs(const std::string& args, Raft::RequestVoteArgs & a)
     a.lastLogTerm  = j["LastLogTerm"].get<uint32_t>();
 }
 
-std::string encodeReply(const Raft::AppendEntriesReply& r)
-{
+std::string encodeReply(const Raft::AppendEntriesReply& r) {
     nlohmann::json j;
-    j["Term"]    = r.term;
+    j["Term"] = r.term;
     j["Success"] = r.success;
+    j["ConflictIndex"] = r.conflictIndex;
+    j["ConflictTerm"] = r.conflictTerm;
     return j.dump();
 }
 
@@ -65,8 +76,12 @@ std::string encodeArgs(const Raft::RequestVoteArgs& a) {
 // Decode Raft replies (String -> Raft AppendEntriesReply)
 void decodeReply(const std::string& replyStr, Raft::AppendEntriesReply& r) {
     nlohmann::json j = nlohmann::json::parse(replyStr);
-    r.term    = j["Term"].get<uint32_t>();
+    r.term = j["Term"].get<uint32_t>();
     r.success = j["Success"].get<bool>();
+    
+    // These fields are only present on failure replies
+    r.conflictIndex = j.value("ConflictIndex", uint64_t(0));
+    r.conflictTerm  = j.value("ConflictTerm", uint32_t(-1));
 }
 
 // Decode Raft replies (String -> Raft RequestVoteReply)

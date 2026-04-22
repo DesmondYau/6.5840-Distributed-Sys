@@ -1747,6 +1747,7 @@ CMakeFiles/raft_tests.dir/src/rpc/labrpc.cpp.o: /6.5840/Lab3_Raft/src/rpc/labrpc
 
 CMakeFiles/raft_tests.dir/tests/raft_tests.cpp.o: /6.5840/Lab3_Raft/tests/raft_tests.cpp \
   /6.5840/Lab3_Raft/src/config.hpp \
+  /6.5840/Lab3_Raft/src/raft.hpp \
   /usr/include/alloca.h \
   /usr/include/asm-generic/bitsperlong.h \
   /usr/include/asm-generic/errno-base.h \

@@ -18,6 +18,7 @@ Config::Config(int num, bool unreliable)
     , m_persisters(num)
     , m_logs(num)
     , m_endpointNames(num, std::vector<std::string>{})
+    , m_applyErrors(num)
 {
     for (int i{0}; i < m_num; i++) {
         startServer(i);
@@ -45,12 +46,13 @@ void Config::begin(const std::string& description) {
 }
 
 void Config::end() {
+    cleanup();
     checkTimeout();
 
     auto elapsed { std::chrono::steady_clock::now() - m_t0 };
     int numRPC { m_network->getTotalRPCCount() - m_rpcs0 };
     long numBytes { m_network->getTotalBytes() - m_bytes0 };
-    int numCommits { m_maxLogIndex - m_maxLogIndex0 };
+    uint64_t numCommits { m_maxLogIndex - m_maxLogIndex0 };
 
     std::cout << "  ... Passed -- " << std::endl;
     std::cout << "Test took " << std::chrono::duration_cast<std::chrono::seconds>(elapsed) << "s" << std::endl;
@@ -61,7 +63,7 @@ void Config::end() {
 }
 
 int Config::checkOneLeader() {
-    std::cout << std::endl << "[Test 3A] CheckOneLeader starting..." << std::endl;
+    std::cout << "\n[Test 3A] CheckOneLeader starting..." << std::endl;
 
     for (int tries{0}; tries < 10; tries++) 
     {
@@ -92,7 +94,7 @@ int Config::checkOneLeader() {
 }
 
 int Config::checkTerms() {
-    std::cout << std::endl << "[Test 3A] CheckTerms starting..." << std::endl;
+    std::cout << "\n[Test 3A] CheckTerms starting..." << std::endl;
 
     int term = -1;
     for (int i{0}; i < m_num; i++) 
@@ -110,7 +112,7 @@ int Config::checkTerms() {
 }
 
 void Config::checkNoLeader() {
-    std::cout << std::endl << "[Test 3A] CheckNoLeader starting..." << std::endl;
+    std::cout << "\n[Test 3A] CheckNoLeader starting..." << std::endl;
 
     for (int i{0}; i < m_num; i++) {
         if (m_connected[i] && m_rafts[i]) {
@@ -123,64 +125,79 @@ void Config::checkNoLeader() {
 }
 
 std::pair<int,std::string> Config::nCommitted(int index) {
+    std::cout << "\n[Test 3B] nCommitted starting..." << std::endl;
     std::lock_guard<std::mutex> lock(m_mu);
+    
 
     int count = 0;
     std::string cmd;
     for (int i = 0; i < m_num; i++) {
         if (m_logs[i].contains(index)) {
             count++;
-            if (cmd.empty()) {
+            if (cmd.empty()) 
+            {
                 cmd = m_logs[i][index];
-            } else if (m_logs[i][index] != cmd) {
+            } 
+            else if (m_logs[i][index] != cmd) 
+            {
                 throw std::runtime_error("different commands committed at same index");
             }
         }
     }
+
+    std::cout << "[Test 3B] Log with Index " << index << " observed in " << count << " servers" << std::endl;
     return {count, cmd};
 }
 
-/*
+
 int Config::one(const std::string& command, int expectedServers, bool retry) {
-    // Try to find a leader and submit the command
-    int index = -1;
-    for (int tries = 0; tries < 5; tries++) {
-        int leader = -1;
-        for (int i = 0; i < m_num; i++) {
-            if (m_connected[i] && m_rafts[i]) {
-                auto [term, state] = m_rafts[i]->getTermState();
-                if (state == Raft::State::LEADER) {
-                    leader = i;
+    std::cout << "\n[Test 3B] One starting..." << std::endl;
+    auto startTime = std::chrono::steady_clock::now();
+    int starts = 0;
+
+    while (std::chrono::duration_cast<std::chrono::seconds>(
+               std::chrono::steady_clock::now() - startTime).count() < 10) 
+    {
+        int index = -1;
+        int term = -1;
+
+        // Try all servers in round-robin
+        for (int si = 0; si < m_num; si++) {
+            starts = (starts + 1) % m_num;
+            if (m_connected[starts] && m_rafts[starts]) {
+                auto [idx, t, ok] = m_rafts[starts]->start(command);
+                if (ok) {
+                    index = idx;
+                    term = t;
                     break;
                 }
             }
         }
 
-        if (leader != -1) {
-            bool ok = false;
-            index = m_rafts[leader]->start(command, ok);
-            if (ok) break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    if (index == -1) throw std::runtime_error("no leader to start command");
-
-    // Wait until the command is committed by expectedServers
-    for (int iters = 0; iters < 10; iters++) {
-        auto [nd, cmd] = nCommitted(index);
-        if (nd >= expectedServers) {
-            if (cmd != command) {
-                throw std::runtime_error("committed command does not match");
+        if (index != -1) {
+            auto innerStart = std::chrono::steady_clock::now();
+            while (std::chrono::duration_cast<std::chrono::seconds>(
+                       std::chrono::steady_clock::now() - innerStart).count() < 2) 
+            {
+                auto [nd, cmd] = nCommitted(index);
+                if (nd >= expectedServers && cmd == command) {
+                    return index; // committed successfully
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
-            return index;
+            if (!retry) {
+                throw std::runtime_error("one(" + command + ") failed to reach agreement in term " + std::to_string(term));
+            }
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if (!retry) throw std::runtime_error("command not committed in time");
-    return -1;
+    throw std::runtime_error("one(" + command + ") failed to reach agreement (timeout)");
 }
-*/
+
+
+
 
 void Config::startServer(int i) 
 { 
@@ -370,7 +387,12 @@ void Config::disconnectServer(int i)
     std::cout << "[Config] Server " << i << " disconnected successfully" << std::endl;
 }
 
+std::shared_ptr<Raft> Config::getRaft(int i) { return m_rafts[i]; };
 
+long Config::bytesTotal()
+{
+    return m_network->getTotalBytes();
+}
 
 void Config::cleanup() 
 { 

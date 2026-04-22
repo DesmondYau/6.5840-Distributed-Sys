@@ -8,6 +8,7 @@
 #include <string>
 #include <mutex>
 #include <chrono>
+#include "raft.hpp"
 
 class Raft;
 class Persister;
@@ -17,7 +18,7 @@ class Network;
 struct ApplyMsg
 {
     bool CommandValid;                                      // true if this is a real log entry
-    int CommandIndex;                                       // the log index of the committed entry
+    uint64_t  CommandIndex;                                 // the log index of the committed entry
     std::string Command;                                    // the actual client command stored in the log
 };
 
@@ -60,7 +61,9 @@ public:
     void startServer(int i);                                // Start/restart Raft server i
     void crashServer(int i);                                // Kill Raft server i but save state
     void connectServer(int i);                              // Attach server i to network
-    void disconnectServer(int i);                           // Detach server i from network   
+    void disconnectServer(int i);                           // Detach server i from network  
+    long bytesTotal();
+    std::shared_ptr<Raft> getRaft(int i);
     void cleanup();  
 
     /*Tests for Lab 2A*/
@@ -90,7 +93,7 @@ private:
     std::chrono::steady_clock::time_point m_t0;               // Timestamp for tracking duration of each test 
     int m_rpcs0;                                              // Snapshot of the total RPC count at the beginning of the test
     long m_bytes0;                                            // Snapshot of the total bytes sent at the beginning of the test
-    int m_maxLogIndex {0};                                    // Tracks the highest log index observed across all Raft servers during the test
-    int m_maxLogIndex0 {0};                                   // Baseline value of maxIndex at the start of each test
+    uint64_t m_maxLogIndex {0};                                    // Tracks the highest log index observed across all Raft servers during the test
+    uint64_t m_maxLogIndex0 {0};                                   // Baseline value of maxIndex at the start of each test
     std::mutex m_mu;
 };

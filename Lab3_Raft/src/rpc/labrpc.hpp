@@ -33,7 +33,7 @@ public:
     ~Network();
 
     void send(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom);
-    void deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::shared_ptr<ReplyMsg> replyMsgPtr);
+    void deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom);
     bool isServerDead(const std::string& endpointName, const std::string& serverName, const std::shared_ptr<Server>& server);
 
     /*

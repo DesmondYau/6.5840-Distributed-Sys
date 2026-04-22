@@ -18,13 +18,20 @@ class Logger;
 class Raft
 {
 public:
+
+    struct LogEntry
+    {
+        std::string command;
+        uint32_t term;
+    };
+
     struct AppendEntriesArgs
     {
         uint32_t term;
         int32_t leaderId;
         uint64_t preLogIndex;
         uint32_t preLogTerm;
-        std::string entries;
+        std::vector<LogEntry> entries;
         uint64_t leaderCommit;
 
     };
@@ -33,6 +40,8 @@ public:
     {
         uint32_t term;
         bool success;
+        uint64_t conflictIndex;
+        uint32_t conflictTerm;
     };
 
     struct RequestVoteArgs
@@ -47,13 +56,6 @@ public:
     {
         uint32_t term;
         bool voteGranted;
-    };
-
-
-    struct LogEntry
-    {
-        std::string command;
-        uint32_t term;
     };
 
     enum class State
@@ -72,13 +74,16 @@ public:
     void appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply);
     void requestVote(const RequestVoteArgs& args, RequestVoteReply& reply);
     void startElection();
-    void broadcastAppendEntries(const std::string& logEntry);
+    void broadcastAppendEntries();
+    std::tuple<int, int, bool> start(const std::string& command);
     void kill();
     std::pair<uint32_t, State> getTermState();
    
 
 
 private:
+    int generateTimeout();
+    void updateLeaderCommitIndex();
     void promoteToLeader();
     void promoteToCandidate();
     bool sendRequestVote(int32_t id, const RequestVoteArgs& args, RequestVoteReply& reply);

@@ -13,6 +13,7 @@ public:
         ELECTION,
         HEARTBEAT,
         REPLICATION,
+        APPLY,
         ERROR
     };
 
@@ -48,6 +49,7 @@ private:
             case Type::ELECTION:    return "ELECTION";
             case Type::HEARTBEAT:   return "HEARTBEAT";
             case Type::REPLICATION: return "REPLICATION";
+            case Type::APPLY:       return "APPLY";
             case Type::ERROR:       return "ERROR";
         }
         return "UNKNOWN";

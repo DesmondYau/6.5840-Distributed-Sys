@@ -5,6 +5,7 @@
 
 const std::chrono::milliseconds RaftElectionTimeout(1000);
 
+
 TEST(RaftTest3A, InitialElection) {
     // Creates a COnfig harness with 3 Raft servers
     Config cfg(3, false);
@@ -60,12 +61,11 @@ TEST(RaftTest3A, ReElection) {
     std::this_thread::sleep_for(2 * RaftElectionTimeout);
     cfg.checkNoLeader();
 
-    /*
-        - We keep on failing this test case because we implemented candidate to reject VoteRequest automatically.
-        - When raft 2 (leader) and raft 1 are disconnected, raft 1 becomes a candidate. The same goes for raft 0
-        - When raft 1 rejoins, both raft 0 and raft 1 are candidate and would not vote for each other -> split vote
-        - Solved by implementing logger
-    */
+
+    // - We keep on failing this test case because we implemented candidate to reject VoteRequest automatically.
+    // - When raft 2 (leader) and raft 1 are disconnected, raft 1 becomes a candidate. The same goes for raft 0
+    // - When raft 1 rejoins, both raft 0 and raft 1 are candidate and would not vote for each other -> split vote
+    // - Solved by implementing logger
     // Restore quorum → leader should be elected
     cfg.connectServer((leader2 + 1) % 3);
     cfg.checkOneLeader();
@@ -76,6 +76,7 @@ TEST(RaftTest3A, ReElection) {
 
     cfg.end();
 }
+
 
 TEST(RaftTest3A, ManyElections) {
     Config cfg(7, false);
@@ -106,7 +107,7 @@ TEST(RaftTest3A, ManyElections) {
     cfg.end();
 }
 
-/*
+
 TEST(RaftTest3B, BasicAgreement) {
     // Create a cluster of 3 Raft servers with reliable network
     Config cfg(3, false);
@@ -119,7 +120,7 @@ TEST(RaftTest3B, BasicAgreement) {
         ASSERT_EQ(nd, 0) << "Some servers committed before Start()";
 
         // Step 2: Submit a command (index*100) to the leader
-        int xindex = cfg.one(index * 100, 3, false);
+        int xindex = cfg.one(std::to_string(index * 100), 3, false);
 
         // Step 3: Verify the committed log index matches expectation
         ASSERT_EQ(xindex, index) << "Got index " << xindex << " but expected " << index;
@@ -128,13 +129,14 @@ TEST(RaftTest3B, BasicAgreement) {
     cfg.end();
 }
 
+
 TEST(RaftTest3B, RPCByteCount) {
     // Create a cluster of 3 Raft servers with reliable network
     Config cfg(3, false);
     cfg.begin("Test (3B): RPC byte count");
 
     // Step 1: Submit an initial command to establish baseline
-    cfg.one(99, 3, false);
+    cfg.one(std::to_string(99), 3, false);
     int64_t bytes0 = cfg.bytesTotal();
 
     // Step 2: Send multiple large commands (simulate heavy payloads)
@@ -157,4 +159,134 @@ TEST(RaftTest3B, RPCByteCount) {
 
     cfg.end();
 }
-*/
+
+TEST(RaftTest3B, FollowerFailure) {
+    Config cfg(3, false);
+    cfg.begin("Test (3B): progressive failure of followers");
+
+    cfg.one(std::to_string(101), 3, false);
+
+    // Disconnect one follower
+    int leader1 = cfg.checkOneLeader();
+    cfg.disconnectServer((leader1 + 1) % 3);
+
+    // Remaining two should agree
+    cfg.one(std::to_string(102), 2, false);
+    std::this_thread::sleep_for(RaftElectionTimeout);
+    cfg.one(std::to_string(103), 2, false);
+
+    // Disconnect remaining follower
+    int leader2 = cfg.checkOneLeader();
+    cfg.disconnectServer((leader2 + 1) % 3);
+    cfg.disconnectServer((leader2 + 2) % 3);
+
+    // Submit command
+    auto [index, _, ok] = cfg.getRaft(leader2)->start(std::to_string(104));
+    ASSERT_TRUE(ok) << "Leader rejected Start()";
+    ASSERT_EQ(index, 4);
+
+    std::this_thread::sleep_for(2 * RaftElectionTimeout);
+
+    // Cannot replicate to any other server, it cannot achieve a majority.
+    auto [n, __] = cfg.nCommitted(index);
+    ASSERT_EQ(n, 0) << n << " committed but no majority";
+
+    cfg.end();
+}
+
+
+TEST(RaftTest3B, LeaderFailure) {
+    Config cfg(3, false);
+    cfg.begin("Test (3B): failure of leaders");
+
+    cfg.one(std::to_string(101), 3, false);
+
+    // Disconnect first leader
+    int leader1 = cfg.checkOneLeader();
+    cfg.disconnectServer(leader1);
+
+    // Remaining followers elect new leader
+    cfg.one(std::to_string(102), 2, false);
+    std::this_thread::sleep_for(RaftElectionTimeout);
+    cfg.one(std::to_string(103), 2, false);
+
+    // Disconnect new leader
+    int leader2 = cfg.checkOneLeader();
+    cfg.disconnectServer(leader2);
+
+    // Submit command to all servers
+    for (int i = 0; i < 3; i++) {
+        cfg.getRaft(i)->start(std::to_string(104));
+    }
+
+    std::this_thread::sleep_for(2 * RaftElectionTimeout);
+
+    auto [n, __] = cfg.nCommitted(4);
+    ASSERT_EQ(n, 0) << n << " committed but no majority";
+
+    cfg.end();
+}
+
+
+TEST(RaftTest3B, FailAgree) {
+    Config cfg(3, false);
+    cfg.begin("Test (3B): agreement after follower reconnects");
+
+    cfg.one(std::to_string(101), 3, false);
+
+    int leader = cfg.checkOneLeader();
+    cfg.disconnectServer((leader + 1) % 3);
+
+    cfg.one(std::to_string(102), 2, false);
+    cfg.one(std::to_string(103), 2, false);
+    std::this_thread::sleep_for(RaftElectionTimeout);
+    cfg.one(std::to_string(104), 2, false);
+    cfg.one(std::to_string(105), 2, false);
+
+    // Reconnect follower
+    cfg.connectServer((leader + 1) % 3);
+
+    // Full cluster should agree again
+    cfg.one(std::to_string(106), 3, true);
+    std::this_thread::sleep_for(RaftElectionTimeout);
+    cfg.one(std::to_string(107), 3, true);
+
+    cfg.end();
+}
+
+
+TEST(RaftTest3B, FailNoAgree) {
+    Config cfg(5, false);
+    cfg.begin("Test (3B): no agreement if too many followers disconnect");
+
+    cfg.one(std::to_string(10), 5, false);
+
+    int leader = cfg.checkOneLeader();
+    cfg.disconnectServer((leader + 1) % 5);
+    cfg.disconnectServer((leader + 2) % 5);
+    cfg.disconnectServer((leader + 3) % 5);
+
+    auto [index, _, ok] = cfg.getRaft(leader)->start(std::to_string(20));
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(index, 2);
+
+    std::this_thread::sleep_for(2 * RaftElectionTimeout);
+
+    auto [n, __] = cfg.nCommitted(index);
+    ASSERT_EQ(n, 0) << n << " committed but no majority";
+
+    // Repair
+    cfg.connectServer((leader + 1) % 5);
+    cfg.connectServer((leader + 2) % 5);
+    cfg.connectServer((leader + 3) % 5);
+
+    int leader2 = cfg.checkOneLeader();
+    auto [index2, ___, ok2] = cfg.getRaft(leader2)->start(std::to_string(30));
+    ASSERT_TRUE(ok2);
+    ASSERT_GE(index2, 2);
+    ASSERT_LE(index2, 3);
+
+    cfg.one(std::to_string(1000), 5, true);
+
+    cfg.end();
+}

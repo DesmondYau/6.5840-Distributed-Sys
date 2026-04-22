@@ -28,9 +28,7 @@ Network::Network()
 
             // Process asynchronously
             std::thread([this, xreq]() {
-                auto replyMsgPtr = std::make_shared<ReplyMsg>();
-                this->deliver(xreq->endpointName, xreq->rpcType, xreq->args, replyMsgPtr);
-                xreq->prom.set_value(*replyMsgPtr);
+                this->deliver(xreq->endpointName, xreq->rpcType, xreq->args, std::move(xreq->prom));
             }).detach();
         }
     });
@@ -61,7 +59,7 @@ void Network::send(const std::string& endpointName, const std::string& rpcType, 
 }
 
 
-void Network::deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::shared_ptr<ReplyMsg> replyMsgPtr)
+void Network::deliver(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom)
 {
     /*
         Ensure RPC endpoint is enabled, connected and the server exists    
@@ -78,9 +76,9 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
         else
         {
             int ms = m_longDelays ? rand() % 7000 : rand() % 100;
-            std::thread([replyMsgPtr, ms]() {
+            std::thread([p = std::move(prom), ms]() mutable {
                 std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-                *replyMsgPtr = { false, "" };
+                p.set_value({ false, "" });
             }).detach();
             return;
         }
@@ -98,22 +96,17 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
     // Drop reqeuest randomly if network is unrealiable
     if (!m_reliable && rand() % 1000 < 100)
     {
+        prom.set_value({false, ""});
         return;
     }
     
     /*
-        Track RPC count and bytes sent
-    */
-    m_totalRPCCount.fetch_add(1, std::memory_order_relaxed);
-    m_totalBytes.fetch_add(args.size(), std::memory_order_relaxed);
-
-    /*
         Run RPC handler asynchronously so we can check server death while waiting.
     */
     // Dispatch message in separate thread
-    std::promise<ReplyMsg> prom;
-    std::future<ReplyMsg> fut = prom.get_future();
-    std::thread([this, server, rpcType, args, p = std::move(prom)]() mutable {
+    std::promise<ReplyMsg> handlerProm;
+    std::future<ReplyMsg> fut = handlerProm.get_future();
+    std::thread([this, server, rpcType, args, p = std::move(handlerProm)]() mutable {
         std::string localReply;
         bool ok = server->dispatch(rpcType, args, localReply);
         m_totalBytes += localReply.size();
@@ -154,25 +147,25 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
     */
     serverDead = isServerDead(endpointName, serverName, server);
     if (!replyOK || serverDead) {                                       // server was killed or no reply: simulate timeout
-        *replyMsgPtr = {false, ""};                                                 
+        prom.set_value({false, ""});                                                 
         return;
     } 
     else if (!m_reliable && rand() % 1000 < 100)                        // Simulate unrealiable network. Drop the reply randomly 
     {
-        *replyMsgPtr = {false, ""};                                 
+        prom.set_value({false, ""});                                 
         return;
     } 
     else if (m_longReordering && rand() % 1000 < 600)                   // Simulate out-of-order delivery. Delay the response for a while
     {
         int ms = 200 + (rand() % (1 + rand() % 2000));
-        std::thread([this, localReplyMsg, replyMsgPtr, ms]() {
+        std::thread([this, localReplyMsg, p=std::move(prom), ms]() mutable {
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-            *replyMsgPtr = localReplyMsg;
+            p.set_value(localReplyMsg);
         }).detach();
     } 
     else                                                                 // normal reply
     {
-        *replyMsgPtr = localReplyMsg;
+        prom.set_value(localReplyMsg);
     }
 }
 
