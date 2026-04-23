@@ -13,7 +13,9 @@ public:
         ELECTION,
         HEARTBEAT,
         REPLICATION,
+        DELETION,
         APPLY,
+        PERSISTER,
         ERROR
     };
 
@@ -49,7 +51,9 @@ private:
             case Type::ELECTION:    return "ELECTION";
             case Type::HEARTBEAT:   return "HEARTBEAT";
             case Type::REPLICATION: return "REPLICATION";
+            case Type::DELETION:    return "DELETION";
             case Type::APPLY:       return "APPLY";
+            case Type::PERSISTER:   return "PERSISTER";
             case Type::ERROR:       return "ERROR";
         }
         return "UNKNOWN";

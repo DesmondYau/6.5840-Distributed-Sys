@@ -48,9 +48,9 @@ public:
     /*
         Network Reliability Controls
     */
-    void setReliable(bool yes);                                                     // Simulate unreliable network. If false, messages may be dropped
-    void setLongDelays(bool yes);                                                   // Simulate long delays. If true, messssages may be delayed
-    void setLongReordering(bool yes);                                               // Simulate out-of-order delivery. If true, messages may arrive out of order
+    void setReliable(bool yes);                                                // Simulate unreliable network. If false, messages may be dropped
+    void setLongDelays(bool yes);                                              // Simulate long delays. Introduces a very long random delay (0–7000 ms) before returning a timeout (no reply)
+    void setLongReordering(bool yes);                                          // Simulate out-of-order delivery. If true, messages may arrive out of order
 
     /*
         Statistics

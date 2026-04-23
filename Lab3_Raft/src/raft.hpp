@@ -86,8 +86,12 @@ private:
     void updateLeaderCommitIndex();
     void promoteToLeader();
     void promoteToCandidate();
+    void stepDownToFollower(uint32_t term);
     bool sendRequestVote(int32_t id, const RequestVoteArgs& args, RequestVoteReply& reply);
     bool sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEntriesReply& reply);
+
+    void persist();
+    void readPersist();
 
     int32_t m_id;                                             
     int32_t m_votedFor { -1 };

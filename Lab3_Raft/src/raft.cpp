@@ -22,17 +22,22 @@ Raft::Raft(const std::vector<std::shared_ptr<Endpoint>>& peers, int32_t id, std:
     , m_applyChannel { applyChannel }
     , m_logger { logger }
 {
-    
-    m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-
     {
         // Initialize last valid heartbeat time to now
         std::lock_guard<std::mutex> lock(m_mu);
         m_lastHeartbeat = std::chrono::steady_clock::now();
+        m_electionTimeout = std::chrono::milliseconds(generateTimeout());
     }
     
-    // Push in dummy log with term 0
-    m_logs.push_back(std::make_shared<LogEntry>("", 0));
+    // Read state from persister when initialized
+    readPersist();    
+
+    {
+        // Push in dummy log with term 0 if empty
+        std::lock_guard<std::mutex> lock(m_mu);
+        if (m_logs.empty())
+            m_logs.push_back(std::make_shared<LogEntry>("", 0));
+    }
 
     // Start raft thread
     m_raftThread = std::thread(&Raft::startRaft, this);
@@ -45,7 +50,6 @@ Raft::~Raft()
     {
         m_raftThread.join();
     }
-   
 }
 
 /*
@@ -143,6 +147,7 @@ void Raft::startElection()
         LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Starting Election with term " + std::to_string(m_currentTerm));
         m_logger->log(LogLevel::INFO, event);
     }
+    persist();
 
     uint64_t lastLogIndex = static_cast<uint64_t>(m_logs.size() - 1);
     uint32_t lastLogTerm  = m_logs.back()->term;
@@ -166,12 +171,16 @@ void Raft::startElection()
             bool received = sendRequestVote(static_cast<int32_t>(id), args, reply);
             if (received)
             {
-                std::lock_guard<std::mutex> lock(m_mu);
-                if (m_dead.load() || m_state != State::CANDIDATE) 
-                    return;
-
-                else if (reply.voteGranted)
                 {
+                    std::lock_guard<std::mutex> lock(m_mu);
+                    if (m_dead.load() || m_state != State::CANDIDATE) 
+                        return;
+                }
+
+                if (reply.voteGranted)
+                {
+                    std::lock_guard<std::mutex> lock(m_mu);
+
                     m_votesGranted++;
                     LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Received true vote from server " + std::to_string(id));
                     m_logger->log(LogLevel::INFO, event);  
@@ -180,17 +189,9 @@ void Raft::startElection()
                 }
                 else if (!reply.voteGranted && reply.term > m_currentTerm)
                 {
-                    m_currentTerm = reply.term;
-                    m_votedFor = -1;
-                    m_state = State::FOLLOWER;
+                   
                     // Notice we should reset election timer here. Otherwise, we will immediate convert back to CANDIDATE once  we turn into FOLLOWER since timer was not reset
-                    m_lastHeartbeat = std::chrono::steady_clock::now();
-                    m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-
-                    LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
-                    m_logger->log(LogLevel::INFO, event);
-                    
-                    m_cv.notify_all();          // ← wake up main thread on state change
+                    stepDownToFollower(reply.term);
                 }
             }
         }).detach();        
@@ -245,28 +246,21 @@ void Raft::broadcastAppendEntries()
                 {
                     // We perform use lock_guard and small checks inside small scope. 
                     // Not likely causing ABA (i.e. leader becomes follower and becomes leader of later term again in between our check)
-                    std::lock_guard<std::mutex> lock(m_mu);
-                    if (m_dead.load() || m_state != State::LEADER) 
-                        return;
-
+                    {
+                        std::lock_guard<std::mutex> lock(m_mu);
+                        if (m_dead.load() || m_state != State::LEADER) 
+                            return;
+                    }
+                
                     // Remember first thing is to check if reponse term is greater than current term to step down from leader
                     // Do not forget to reset timer when step down to follower
                     if (reply.term > m_currentTerm)
                     {
-                        m_currentTerm = reply.term;
-                        m_votedFor = -1;
-                        m_state = State::FOLLOWER;
-                        m_lastHeartbeat = std::chrono::steady_clock::now();
-                        m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-
-                        LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
-                        m_logger->log(LogLevel::INFO, event);
-                        m_cv.notify_all();
+                        stepDownToFollower(reply.term);
                         return;
                     }
 
                 }
-
 
                 if (reply.success)
                 {
@@ -361,40 +355,33 @@ bool Raft::sendAppendEntries(int32_t id, const AppendEntriesArgs& args, AppendEn
 */
 void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
-    std::lock_guard<std::mutex> lock(m_mu);
-    reply.term = m_currentTerm;
-    reply.success = false;
+    {
+        std::lock_guard<std::mutex> lock(m_mu);
+        reply.term = m_currentTerm;
+        reply.success = false;
+    }
 
     // Terms in AppendEntries RPC < current term of raft
     if (m_currentTerm > args.term)
     {
-        reply.success = false;
         return;
     }
     else
     {
         // Remember first thing is to check if reponse term is greater than current term to step down from leader
         // Read the paper carefully, you do not need to be sure this AppendEntries rpc is from leader before converting to follower. Term > m_currentTerm is all you need
-        // We only need consistency check for resetting election timer
         if (m_currentTerm < args.term)
         {
-            m_currentTerm = args.term;
-            m_votedFor = -1;
-            m_state = State::FOLLOWER;
             // According to paper. we should pass consistency check to confirm this AppendEntries RPC is from current leader before reset election timer
             // However, the strict implementation is causing followers to start election a lot more easily, causing repeated splits vots and cannot converge to one leader
-            // Notice we should reset election timer here. Otherwise, we will immediate convert back to CANDIDATE once  we turn into FOLLOWER since timer was not reset
-            reply.success = true;
-            m_lastHeartbeat = std::chrono::steady_clock::now();
-            m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-            
-            LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
-            m_logger->log(LogLevel::INFO, event);
+            // Notice we should reset election timer here. Otherwise, we will immediately convert back to CANDIDATE once  we turn into FOLLOWER since timer was not reset
+            stepDownToFollower(args.term);
         }
 
         // Consistency check to verify AppendEntries RPC comes from current leader. Need to check if preLogIndex out of range (e.g. when follower has very few logs)
         if (args.preLogIndex >= m_logs.size() ||  m_logs[args.preLogIndex]->term != args.preLogTerm)
         {
+            std::lock_guard<std::mutex> lock(m_mu);
             if (args.preLogIndex >= m_logs.size())
             {
                 reply.conflictIndex = m_logs.size();
@@ -414,48 +401,73 @@ void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& repl
         }
         else
         {     
-            //Passed consistency check we can confirm this AppendEntries RPC is from current leader. Reset election timer since 
-            reply.success = true;
-            m_lastHeartbeat = std::chrono::steady_clock::now();
-            m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-
-            // If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it
-            size_t adj { args.preLogIndex + 1 };
-            size_t mark { 0 };
-            for (size_t i{0}; i < args.entries.size(); i++) 
             {
-                // Compare follower’s entry term vs leader’s entry term at this index
-                if (i + adj < m_logs.size() && m_logs[i + adj]->term != args.entries[i].term) 
+                std::lock_guard<std::mutex> lock(m_mu);
+
+                //Passed consistency check we can confirm this AppendEntries RPC is from current leader. Reset election timer since 
+                reply.success = true;
+                m_lastHeartbeat = std::chrono::steady_clock::now();
+                m_electionTimeout = std::chrono::milliseconds(generateTimeout());
+
+                // If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it
+                size_t adj { args.preLogIndex + 1 };
+                size_t mark { 0 };
+                for (size_t i{0}; i < args.entries.size(); i++) 
                 {
-                    m_logs.resize(i + adj); // truncate conflicting suffix
-                    mark = i;
-                    break;
+                    if (i + adj < m_logs.size())
+                    {
+                        // Compare follower’s entry term vs leader’s entry term at this index
+                        if (m_logs[i + adj]->term != args.entries[i].term) 
+                        {
+                            m_logs.resize(i + adj); // truncate conflicting suffix
+                            mark = i;
+                            LogEvent event(LogEvent::Type::DELETION, m_id, m_currentTerm, "Resizing los to:" + std::to_string(m_logs.size()-1));
+                            m_logger->log(LogLevel::INFO, event); 
+
+                            break;
+                        }
+                        // Since network is unreliable, our AppendEntries RPC reply back to leader can be dropped. We might have appeneded the log but leader does not know
+                        // In that case, when leader retries with the same log, we move forward so that we would not reappend the same log
+                        else if (m_logs[i + adj]->term == args.entries[i].term && m_logs[i + adj]->command == args.entries[i].command)
+                        {
+                            mark++;
+                        }
+                    }
+                }
+                
+                // Replicate logs
+                for (size_t i=mark; i < args.entries.size(); i++)
+                {
+                    m_logs.push_back(std::make_shared<LogEntry>(args.entries[i].command, args.entries[i].term));
+                    LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, 
+                        "Append log entry with command:" + m_logs.back()->command + " and term:" + std::to_string(m_logs.back()->term) + " at index" + std::to_string(m_logs.size() - 1));
+                    m_logger->log(LogLevel::INFO, event);   
                 }
             }
-
-            for (size_t i=mark; i < args.entries.size(); i++)
-            {
-                m_logs.push_back(std::make_shared<LogEntry>(args.entries[i].command, args.entries[i].term));
-                LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Append log entry with command:" + args.entries[i].command + " and term:" + std::to_string(args.term));
-                m_logger->log(LogLevel::INFO, event);   
-            }
             
-            // if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
-            // I am  guessing args.preLogIndex + args.entries.size() works for index of last new entry
-            // However, most other implementation use m_logs.size()-1. We may include uncommited entries but we alwasy have m_commitIndex as minimum 
-            if (args.leaderCommit > m_commitIndex)
-                m_commitIndex = std::min(args.leaderCommit, m_logs.size()-1);
+            persist();
+
+            {
+                std::lock_guard<std::mutex> lock(m_mu);
+
+                // if leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
+                // I am  guessing args.preLogIndex + args.entries.size() works for index of last new entry
+                // However, most other implementation use m_logs.size()-1. We may include uncommited entries but we alwasy have m_commitIndex as minimum 
+                if (args.leaderCommit > m_commitIndex)
+                    m_commitIndex = std::min(args.leaderCommit, m_logs.size()-1);
+                    
                 
-            
-            // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine
-            while (m_commitIndex > m_lastApplied)
-            {
-                m_lastApplied++;
-                m_applyChannel->push(ApplyMsg {true, m_lastApplied, m_logs[m_lastApplied]->command});
+                // If commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine
+                while (m_commitIndex > m_lastApplied)
+                {
+                    m_lastApplied++;
+                    m_applyChannel->push(ApplyMsg {true, m_lastApplied, m_logs[m_lastApplied]->command});
 
-                LogEvent event(LogEvent::Type::APPLY, m_id, m_currentTerm, "Apply log with index:" + std::to_string(m_lastApplied) + " and entry:" + m_logs[m_lastApplied]->command);
-                m_logger->log(LogLevel::INFO, event);
+                    LogEvent event(LogEvent::Type::APPLY, m_id, m_currentTerm, "Apply log with index:" + std::to_string(m_lastApplied) + " and entry:" + m_logs[m_lastApplied]->command);
+                    m_logger->log(LogLevel::INFO, event);
+                }
             }
+            
         } 
     }   
 }
@@ -474,13 +486,16 @@ bool Raft::sendRequestVote(int32_t id, const RequestVoteArgs& args, RequestVoteR
     Using lock_guard to perform locking at all times
 */
 void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
-{
-    std::lock_guard<std::mutex> lock(m_mu);
-    reply.term = m_currentTerm;
-    reply.voteGranted = false;
+{   
+    {
+        std::lock_guard<std::mutex> lock(m_mu);
+        reply.term = m_currentTerm;
+        reply.voteGranted = false;
+    }
 
     if (m_currentTerm > args.term)
     {
+        std::lock_guard<std::mutex> lock(m_mu);
         LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Reject requestVote: Candidate has lower term");
         m_logger->log(LogLevel::DEBUG, event);
 
@@ -490,30 +505,28 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
     {
         if (m_currentTerm < args.term)
         {
-            m_currentTerm = args.term;
-            m_votedFor = -1;
-            m_state = State::FOLLOWER;
             // Notice we should reset election timer here. Otherwise, we will immediate convert back to CANDIDATE once  we turn into FOLLOWER since timer was not reset
-            m_lastHeartbeat = std::chrono::steady_clock::now();
-            m_electionTimeout = std::chrono::milliseconds(generateTimeout());
-
-            LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
-            m_logger->log(LogLevel::INFO, event);
+            stepDownToFollower(args.term);
         }
         
-        bool logsUpToDate = (args.lastLogTerm > m_logs.back()->term) || 
-                            (args.lastLogTerm == m_logs.back()->term && args.lastLogIndex >= static_cast<uint64_t>(m_logs.size()-1));
-        // Forgot logUpToDate need && condition
-        if ((m_votedFor == -1 || m_votedFor == args.candidateId) && logsUpToDate)
         {
-            reply.voteGranted = true;
-            m_votedFor = args.candidateId;
-            m_lastHeartbeat = std::chrono::steady_clock::now();
-            m_electionTimeout = std::chrono::milliseconds(generateTimeout());
+            std::lock_guard<std::mutex> lock(m_mu);
+            bool logsUpToDate = (args.lastLogTerm > m_logs.back()->term) || 
+                                (args.lastLogTerm == m_logs.back()->term && args.lastLogIndex >= static_cast<uint64_t>(m_logs.size()-1));
+            // Forgot logUpToDate need && condition
+            if ((m_votedFor == -1 || m_votedFor == args.candidateId) && logsUpToDate)
+            {
+                reply.voteGranted = true;
+                m_votedFor = args.candidateId;
+                m_lastHeartbeat = std::chrono::steady_clock::now();
+                m_electionTimeout = std::chrono::milliseconds(generateTimeout());
 
-            LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Voted for " + std::to_string(m_votedFor));
-            m_logger->log(LogLevel::INFO, event);
+                LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Voted for " + std::to_string(m_votedFor));
+                m_logger->log(LogLevel::INFO, event);
+            } 
         }
+        persist();
+        
     }        
 }
 
@@ -534,11 +547,27 @@ std::tuple<int, int, bool> Raft::start(const std::string& command)
             m_logs.emplace_back(std::make_shared<LogEntry>(command, m_currentTerm));
         }
     }  
-
+    persist();
     m_cv.notify_all();
     return std::tuple<int, int, bool>{m_logs.size()-1, m_currentTerm, true};
 }
 
+
+
+void Raft::kill()
+{
+    m_dead.store(true);
+    m_cv.notify_all();
+}
+
+
+int Raft::generateTimeout()
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dist(300, 500);
+    return dist(gen);
+}
 
 void Raft::updateLeaderCommitIndex() 
 {
@@ -572,14 +601,6 @@ void Raft::updateLeaderCommitIndex()
 }
 
 
-
-void Raft::kill()
-{
-    m_dead.store(true);
-    m_cv.notify_all();
-}
-
-
 std::pair<uint32_t, Raft::State> Raft::getTermState()
 {
     std::lock_guard<std::mutex> lock(m_mu);
@@ -606,13 +627,74 @@ void Raft::promoteToCandidate()
     m_logger->log(LogLevel::INFO, event);
 }
 
-int Raft::generateTimeout()
+void Raft::stepDownToFollower(uint32_t term)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(300, 500);
-    return dist(gen);
+    {
+        std::lock_guard<std::mutex> lock(m_mu);
+        m_currentTerm = term;
+        m_votedFor = -1;
+        m_state = State::FOLLOWER;
+        m_lastHeartbeat = std::chrono::steady_clock::now();
+        m_electionTimeout = std::chrono::milliseconds(generateTimeout());
+
+        LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
+        m_logger->log(LogLevel::INFO, event);
+                        
+        m_cv.notify_all();          // wake up main thread on state change
+    }
+    persist();
 }
 
+void Raft::persist()
+{
+    nlohmann::json j;
+    {
+        std::lock_guard lock(m_mu);
+        j["Term"] = m_currentTerm;
+        j["VotedFor"] = m_votedFor;
+        
+        std::vector<nlohmann::json> logVector;
+        for (auto& logEntry : m_logs)
+        {
+            logVector.push_back({{"Command", logEntry->command}, {"Term", logEntry->term}});
+        }
+        j["Log"] = logVector;
+    }
 
+    std::string data = j.dump();
+    std::vector<uint8_t> state(data.begin(), data.end());
+
+    m_persister->saveRaftState(state);
+}
+
+void Raft::readPersist()
+{   
+    std::vector<uint8_t> bytes = m_persister->readRaftState();
+    if (bytes.empty())
+    {
+        LogEvent event(LogEvent::Type::PERSISTER, m_id, m_currentTerm, "No previous state from persister");
+        m_logger->log(LogLevel::INFO, event);
+        return;
+    }
+    std::string str(bytes.begin(), bytes.end());
+
+    nlohmann::json j = nlohmann::json::parse(str);
+    {
+        std::lock_guard<std::mutex> lock_guard(m_mu);
+
+        m_currentTerm = j.value("Term", 0u);
+        m_votedFor = j.value("VoterFor", -1);
+
+        m_logs.clear();
+        for (const auto& jsonEntry : j["Log"])
+        {
+            auto command = jsonEntry.value("Command", "");
+            auto term = jsonEntry.value("Term", 0u);
+            m_logs.push_back(std::make_shared<LogEntry>(command, term));
+        }
+    }
+
+    LogEvent event(LogEvent::Type::PERSISTER, m_id, m_currentTerm, "Restored state from persister");
+    m_logger->log(LogLevel::INFO, event);
+}
 

@@ -63,7 +63,7 @@ void Config::end() {
 }
 
 int Config::checkOneLeader() {
-    std::cout << "\n[Test 3A] CheckOneLeader starting..." << std::endl;
+    std::cout << "\n[Test] CheckOneLeader starting..." << std::endl;
 
     for (int tries{0}; tries < 10; tries++) 
     {
@@ -94,7 +94,7 @@ int Config::checkOneLeader() {
 }
 
 int Config::checkTerms() {
-    std::cout << "\n[Test 3A] CheckTerms starting..." << std::endl;
+    std::cout << "\n[Test] CheckTerms starting..." << std::endl;
 
     int term = -1;
     for (int i{0}; i < m_num; i++) 
@@ -112,7 +112,7 @@ int Config::checkTerms() {
 }
 
 void Config::checkNoLeader() {
-    std::cout << "\n[Test 3A] CheckNoLeader starting..." << std::endl;
+    std::cout << "\n[Test] CheckNoLeader starting..." << std::endl;
 
     for (int i{0}; i < m_num; i++) {
         if (m_connected[i] && m_rafts[i]) {
@@ -124,8 +124,11 @@ void Config::checkNoLeader() {
 
 }
 
+// It answers two questions at the same time:
+// 1. How many servers contain the log entry at index?
+// 2. Do all of them have the exact same command at that index
 std::pair<int,std::string> Config::nCommitted(int index) {
-    std::cout << "\n[Test 3B] nCommitted starting..." << std::endl;
+    std::cout << "\n[Test] nCommitted starting..." << std::endl;
     std::lock_guard<std::mutex> lock(m_mu);
     
 
@@ -145,13 +148,16 @@ std::pair<int,std::string> Config::nCommitted(int index) {
         }
     }
 
-    std::cout << "[Test 3B] Log with Index " << index << " observed in " << count << " servers" << std::endl;
+    std::cout << "[Test] Log with Index " << index << " observed in " << count << " servers" << std::endl;
     return {count, cmd};
 }
 
-
+// 1. Finds a current leader (by trying start() on every raft until one accepts the command).
+// 2. Submits the command to that leader.
+// 3. Waits (polls) until the command has been committed on at least expectedServers servers and the committed value exactly matches the one we submitted.
+// (no duplicates, no missing entries, no wrong terms)
 int Config::one(const std::string& command, int expectedServers, bool retry) {
-    std::cout << "\n[Test 3B] One starting..." << std::endl;
+    std::cout << "\n[Test] One starting..." << std::endl;
     auto startTime = std::chrono::steady_clock::now();
     int starts = 0;
 
@@ -317,15 +323,17 @@ void Config::crashServer(int i)
 {
     std::cout << "[Config] Attempting to crash server " << i << std::endl;
 
+    // Disconnect server
     disconnectServer(i);
     m_network->deleteServer(std::to_string(i)); 
 
-    // copy persister state
+    // copy persister state after disconnect
     if (m_persisters[i]) 
     {
         m_persisters[i] = std::make_shared<Persister>(*m_persisters[i]);
     }
 
+    // kill and remove raft
     if (m_rafts[i]) 
     {
         m_rafts[i]->kill();
@@ -334,9 +342,9 @@ void Config::crashServer(int i)
 
     // preserve last persisted state
     if (m_persisters[i]) {
-        auto raftState { m_persisters[i]->ReadRaftState() };
+        auto raftState { m_persisters[i]->readRaftState() };
         m_persisters[i] = std::make_shared<Persister>();
-        m_persisters[i]->SaveRaftState(raftState);
+        m_persisters[i]->saveRaftState(raftState);
     }
 
     std::cout << "[Config] Server " << i << " crashed successfully" << std::endl;
@@ -402,6 +410,7 @@ void Config::cleanup()
             raft->kill();
     }
     m_network->cleanup(); 
+
     checkTimeout(); 
 }
 
@@ -414,4 +423,9 @@ void Config::checkTimeout() {
 void Config::setNetworkUnreliable(bool unreliable) 
 { 
     m_network->setReliable(!unreliable); 
+}
+
+void Config::setNetworkLongReordering(bool reorder)
+{
+    m_network->setLongReordering(reorder);
 }

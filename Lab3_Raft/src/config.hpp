@@ -64,21 +64,21 @@ public:
     void disconnectServer(int i);                           // Detach server i from network  
     long bytesTotal();
     std::shared_ptr<Raft> getRaft(int i);
+    void setNetworkUnreliable(bool unrel);
+    void setNetworkLongReordering(bool reorder);
     void cleanup();  
 
-    /*Tests for Lab 2A*/
+    /*Functions for testing*/
     int checkOneLeader();                                   // Returns leader ID
     int checkTerms();                                       // Returns current term across cluster
     void checkNoLeader();                                   // Asserts no leader exists
-
-     /*Tests for Lab 2B*/
     std::pair<int,std::string> nCommitted(int index);                           // returns (#servers committed, command string)
     int one(const std::string& command, int expectedServers, bool retry);       // submit command and wait for commit
                                            
 
 private:
     void checkTimeout();
-    void setNetworkUnreliable(bool unrel);
+    
 
     int m_num;                                               // number of Raft servers
     std::shared_ptr<Network> m_network;                      // simulated RPC network
