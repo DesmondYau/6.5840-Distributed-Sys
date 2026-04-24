@@ -292,8 +292,6 @@ TEST(RaftTest3B, FailNoAgree) {
     cfg.end();
 }
 
-
-
 TEST(RaftTest3C, Persist1) {
     Config cfg(3, false);
     cfg.begin("Test (3C): basic persistence");

@@ -565,7 +565,8 @@ int Raft::generateTimeout()
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dist(300, 500);
+    // time out cannot be set too frequently in unrealiable network. If there is delay/drop in message, re-election easily starts and cannot converge to a leader
+    std::uniform_int_distribution<> dist(400, 600);         
     return dist(gen);
 }
 
