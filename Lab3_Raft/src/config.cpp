@@ -44,7 +44,6 @@ Config::Config(int num, bool unreliable)
 
     setNetworkUnreliable(unreliable);
     m_network->setLongDelays(true);
-
 }
 
 Config::~Config() 
@@ -149,7 +148,7 @@ void Config::startServer(int i)
         m_rafts[i] = raft;
     }
     
-    // Launch the applier thread. It is guaranteed that m_rafts[i] exists.
+    // Launch the applier thread. It is now guaranteed that m_rafts[i] exists.
     m_applierStopped[i] = false;
     m_applierThreads[i] = std::thread([this, i, applyChannel]() {
         while (!m_applierStopped[i]) 

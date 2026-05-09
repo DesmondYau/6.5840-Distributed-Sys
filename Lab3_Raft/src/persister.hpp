@@ -21,13 +21,8 @@ public:
     /* Operations for snapshots*/
     void saveStateAndSnapshot(const std::vector<uint8_t>& state, const std::vector<uint8_t>& snapshot);
     std::vector<uint8_t> readSnapshot();
-
+    size_t snapshotSize();
     
-    
-
-    /*
-    int SnapshotSize();
-    */
 
 private:
     mutable std::mutex m_mu;

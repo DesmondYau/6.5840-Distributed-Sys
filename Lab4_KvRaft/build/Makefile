@@ -249,30 +249,6 @@ src/config.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/src/config.cpp.s
 .PHONY : src/config.cpp.s
 
-src/kvraft.o: src/kvraft.cpp.o
-.PHONY : src/kvraft.o
-
-# target to build an object file
-src/kvraft.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o
-.PHONY : src/kvraft.cpp.o
-
-src/kvraft.i: src/kvraft.cpp.i
-.PHONY : src/kvraft.i
-
-# target to preprocess a source file
-src/kvraft.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.i
-.PHONY : src/kvraft.cpp.i
-
-src/kvraft.s: src/kvraft.cpp.s
-.PHONY : src/kvraft.s
-
-# target to generate assembly for a file
-src/kvraft.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.s
-.PHONY : src/kvraft.cpp.s
-
 src/kvserver.o: src/kvserver.cpp.o
 .PHONY : src/kvserver.o
 
@@ -321,6 +297,30 @@ tests/KV_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.s
 .PHONY : tests/KV_test.cpp.s
 
+tests/porcupine/visualization.o: tests/porcupine/visualization.cpp.o
+.PHONY : tests/porcupine/visualization.o
+
+# target to build an object file
+tests/porcupine/visualization.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o
+.PHONY : tests/porcupine/visualization.cpp.o
+
+tests/porcupine/visualization.i: tests/porcupine/visualization.cpp.i
+.PHONY : tests/porcupine/visualization.i
+
+# target to preprocess a source file
+tests/porcupine/visualization.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.i
+.PHONY : tests/porcupine/visualization.cpp.i
+
+tests/porcupine/visualization.s: tests/porcupine/visualization.cpp.s
+.PHONY : tests/porcupine/visualization.s
+
+# target to generate assembly for a file
+tests/porcupine/visualization.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/kvRaft_tests.dir/build.make CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.s
+.PHONY : tests/porcupine/visualization.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -345,15 +345,15 @@ help:
 	@echo "... src/config.o"
 	@echo "... src/config.i"
 	@echo "... src/config.s"
-	@echo "... src/kvraft.o"
-	@echo "... src/kvraft.i"
-	@echo "... src/kvraft.s"
 	@echo "... src/kvserver.o"
 	@echo "... src/kvserver.i"
 	@echo "... src/kvserver.s"
 	@echo "... tests/KV_test.o"
 	@echo "... tests/KV_test.i"
 	@echo "... tests/KV_test.s"
+	@echo "... tests/porcupine/visualization.o"
+	@echo "... tests/porcupine/visualization.i"
+	@echo "... tests/porcupine/visualization.s"
 .PHONY : help
 
 

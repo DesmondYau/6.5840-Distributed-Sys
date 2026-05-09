@@ -9,6 +9,7 @@ enum class LogLevel { DEBUG, INFO, WARN, ERROR };
 class LogEvent {
 public:
     enum class Type {
+        // Raft specific
         STATECHANGE,
         ELECTION,
         HEARTBEAT,
@@ -17,37 +18,66 @@ public:
         APPLY,
         PERSISTER,
         SNAPSHOT,
-        ERROR
+        ERROR,
+
+        // KVServer specific
+        KV_REQUEST,       // When receiving Get/PutAppend from Clerk
+        KV_REPLY,         // When replying back to Clerk
+        KV_STATEMACHINE,  // When modifying the actual std::unordered_map
+        KV_ERROR
     };
 
     LogEvent()
     {}
 
+    // Constructor for Raft events
     LogEvent(Type type, int32_t raftId, uint32_t currentTerm, const std::string& message)
         : m_type(type)
-        , m_raftId(raftId)
+        , m_id(raftId)
         , m_currentTerm(currentTerm)
         , m_message(message)
+        , m_isRaft(true)
+    {}
+
+    // Constructor for KVServer events (Omit currentTerm)
+    LogEvent(Type type, int32_t serverId, const std::string& message)
+        : m_type(type)
+        , m_id(serverId)
+        , m_currentTerm(0)
+        , m_message(message)
+        , m_isRaft(false)
     {}
 
     std::string toString() const 
     {
         std::stringstream os;
-        os  << "Raft: " << m_raftId << " CurrentTerm: " << m_currentTerm
-            << " [" << typeToString(m_type) << "] "
-            << m_message;
+        if (m_isRaft) 
+        {
+            os  << "Raft: " << m_id << " CurrentTerm: " << m_currentTerm
+                << " [" << typeToString(m_type) << "] "
+                << m_message;
+        } 
+        else 
+        {
+            // Formatting specifically for KVServer logs
+            os  << "Server: " << m_id 
+                << " [" << typeToString(m_type) << "] "
+                << m_message;
+        }
         return os.str();
     }
 
 private:
     Type m_type;
-    int32_t m_raftId;
+    int32_t m_id;
     uint32_t m_currentTerm;
     std::string m_message;
+    bool m_isRaft; // Flag to determine how to format toString()
 
     static const char* typeToString(Type type) 
     {
         switch (type) {
+            // Raft types
             case Type::STATECHANGE: return "STATECHANGE";
             case Type::ELECTION:    return "ELECTION";
             case Type::HEARTBEAT:   return "HEARTBEAT";
@@ -57,6 +87,12 @@ private:
             case Type::PERSISTER:   return "PERSISTER";
             case Type::SNAPSHOT:    return "SNAPSHOT";
             case Type::ERROR:       return "ERROR";
+
+            // KVServer types
+            case Type::KV_REQUEST:      return "KV_REQ";
+            case Type::KV_REPLY:        return "KV_REP";
+            case Type::KV_STATEMACHINE: return "KV_STATEMACHINE";
+            case Type::KV_ERROR:        return "KV_ERROR";
         }
         return "UNKNOWN";
     }
@@ -69,9 +105,24 @@ public:
         : m_out(out)
     {}
 
-    void log(LogLevel level, const LogEvent& event) {
+    void logRaft(LogLevel level, const LogEvent& event) 
+    {
+        /*
         std::lock_guard<std::mutex> lock(m_mu);
-        m_out << "[" << levelToString(level) << "] " << event.toString() << "\n";
+        if (level != LogLevel::DEBUG)
+        {
+            m_out << "[Raft] [" << levelToString(level) << "] " << event.toString() << "\n";
+        }
+        */
+    }
+
+    void logKVServer(LogLevel level, const LogEvent& event) 
+    {
+        std::lock_guard<std::mutex> lock(m_mu);
+        if (level != LogLevel::DEBUG)
+        {
+            m_out << "[KVServer] [" << levelToString(level) << "] " << event.toString() << "\n";
+        }
     }
 
 private:

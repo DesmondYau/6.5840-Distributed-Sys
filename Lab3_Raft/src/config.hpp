@@ -105,7 +105,7 @@ public:
 
 private:
     int m_num;                                                  // number of Raft servers
-    std::shared_ptr<labrpc::Network> m_network;                         // simulated RPC network
+    std::shared_ptr<labrpc::Network> m_network;                 // simulated RPC network
     std::vector<std::shared_ptr<Raft>> m_rafts;                 // Vector of Raft instances
     std::vector<bool> m_connected;                              // Vector of connection status for each Raft instance
     std::vector<std::shared_ptr<Persister>> m_persisters;       // Vector of persisters holding each server’s durable state (term, log, snapshot)

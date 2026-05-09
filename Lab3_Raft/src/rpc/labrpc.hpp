@@ -9,7 +9,8 @@
 #include <queue>
 #include <future>
 
-namespace labrpc {
+namespace labrpc 
+{
 
 class Endpoint;                                     // Forward declaretion. RPC stubs for communication
 class Server;                                       // Forward declaration. Represent a Raft server in the cluser
@@ -20,7 +21,7 @@ struct ReplyMsg
     std::string reply;
 };
 
-struct reqMsg 
+struct ReqMsg 
 {
     std::string endpointName;
     std::string rpcType;
@@ -68,7 +69,7 @@ private:
     bool m_longDelays { false };
     bool m_longReordering { false };
     bool m_done { false };
-    std::queue<std::shared_ptr<reqMsg>> m_reqQueue;                 // queue of pending requests
+    std::queue<std::shared_ptr<ReqMsg>> m_reqQueue;                 // queue of pending requests
     std::mutex m_queueMu;                                           // mutex to protect m_reQueue
     std::condition_variable m_cv;                                   // signals new requests
     std::map<std::string,std::shared_ptr<Server>> m_servers;        // Registry of all Raft servers currently alive in the cluster (server name, pointer to Server object)

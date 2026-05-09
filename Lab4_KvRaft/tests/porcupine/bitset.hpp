@@ -1,4 +1,3 @@
-// porcupine/bitset.hpp
 #pragma once
 
 #include <vector>

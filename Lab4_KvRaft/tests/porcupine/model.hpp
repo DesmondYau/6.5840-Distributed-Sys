@@ -1,96 +1,89 @@
-// porcupine/model.hpp
 #pragma once
 
-#include "../models.hpp"   // your KvInput / KvOutput / KvModel
+#include <any>
+#include <map>
 #include <string>
 #include <vector>
-#include <functional>
-#include <cstdint>
+#include <utility>
+#include "../src/models.hpp"   
+#include "checker.hpp"         // Abstract Model definition
 
-namespace porcupine {
+namespace models {
 
-// ==============================================
-// Types matching Go exactly
-// ==============================================
+/**
+ * @brief Concrete implementation of the Porcupine Model.
+ * This class translates generic Porcupine operations (using std::any) into 
+ * strongly-typed KV operations defined in models.hpp[cite: 8, 9].
+ */
+class KvModelWrapper : public porcupine::Model {
+public:
+    /**
+     * @brief Returns the initial state of the system.
+     * Maps to Go's Init func() interface{}[cite: 8].
+     */
+    std::any Init() const override {
+        return KvModel::Init(); // Returns empty string
+    }
 
-struct Operation {
-    int ClientId = 0;           // optional, unless you want visualization
-    KvInput Input;
-    int64_t Call = 0;           // invocation time (nanoseconds)
-    KvOutput Output;
-    int64_t Return = 0;         // response time (nanoseconds)
+    /**
+     * @brief System step function[cite: 8].
+     * Logic: (state, input, output) -> (is_valid, next_state)[cite: 8].
+     */
+    std::pair<bool, std::any> Step(const std::any& state, const std::any& input, const std::any& output) const override {
+        // C++ equivalent of Go's type assertions[cite: 8, 9]
+        auto st = std::any_cast<std::string>(state);
+        auto inp = std::any_cast<KvInput>(input);
+        auto out = std::any_cast<KvOutput>(output);
+        
+        auto [ok, next_state] = KvModel::Step(st, inp, out);
+        return {ok, std::any(next_state)};
+    }
+
+    bool Equal(const std::any& state1, const std::any& state2) const override {
+        // Cast the std::any states back to strings and compare them
+        auto s1 = std::any_cast<std::string>(state1);
+        auto s2 = std::any_cast<std::string>(state2);
+        return s1 == s2;
+    }
+
+    /**
+     * @brief Partitions the history by key for performance[cite: 8].
+     * Porcupine checks each partition independently[cite: 8].
+     */
+    std::vector<std::vector<porcupine::Operation>> Partition(const std::vector<porcupine::Operation>& history) const override {
+        std::map<std::string, std::vector<porcupine::Operation>> groups;
+        for (const auto& op : history) {
+            // Accessing the 'Input' member from the Operation struct defined in checker.hpp
+            auto inp = std::any_cast<KvInput>(op.Input); 
+            groups[inp.m_key].push_back(op);
+        }
+        
+        std::vector<std::vector<porcupine::Operation>> result;
+        for (auto const& [key, ops] : groups) {
+            result.push_back(ops);
+        }
+        return result;
+    }
+
+    /**
+     * @brief Optional visualization helper[cite: 8].
+     * Note: If checker.hpp does not define this as virtual, remove 'override'.
+     */
+    std::string DescribeOperation(const std::any& input, const std::any& output) const override {
+        auto inp = std::any_cast<KvInput>(input);
+        auto out = std::any_cast<KvOutput>(output);
+        return KvModel::DescribeOperation(inp, out);
+    }
+
+    virtual std::string DescribeState(const std::any& state) const override {
+        auto st = std::any_cast<std::string>(state);
+        return st; // For KV stores, the state is usually a string representation of the map
+    }
 };
 
-enum class EventKind : bool {
-    CallEvent   = false,
-    ReturnEvent = true
-};
+/**
+ * @brief Global instance for the linearizability checker.
+ */
+inline KvModelWrapper kvModelInstance;
 
-struct Event {
-    int ClientId = 0;
-    EventKind Kind;
-    KvInput Input;      // used for Call
-    KvOutput Output;    // used for Return
-    int Id = 0;
-};
-
-// ==============================================
-// The Model definition (same as Go)
-// ==============================================
-
-struct Model {
-    // Partition functions
-    std::function<std::vector<std::vector<Operation>>(const std::vector<Operation>&)> Partition;
-    std::function<std::vector<std::vector<Event>>(const std::vector<Event>&)> PartitionEvent;
-
-    // Initial state of the system
-    std::function<std::string()> Init;
-
-    // Step function: returns (ok, newState)
-    std::function<std::pair<bool, std::string>(const std::string& state,
-                                               const KvInput& input,
-                                               const KvOutput& output)> Step;
-
-    // Equality on states
-    std::function<bool(const std::string&, const std::string&)> Equal;
-
-    // For visualization
-    std::function<std::string(const KvInput&, const KvOutput&)> DescribeOperation;
-    std::function<std::string(const std::string&)> DescribeState;
-};
-
-// ==============================================
-// Default helpers (exactly as in Go)
-// ==============================================
-
-inline std::vector<std::vector<Operation>> NoPartition(const std::vector<Operation>& history) {
-    return {history};
-}
-
-inline std::vector<std::vector<Event>> NoPartitionEvent(const std::vector<Event>& history) {
-    return {history};
-}
-
-inline bool ShallowEqual(const std::string& a, const std::string& b) {
-    return a == b;
-}
-
-inline std::string DefaultDescribeOperation(const KvInput& input, const KvOutput& output) {
-    return KvModel::DescribeOperation(input, output);
-}
-
-inline std::string DefaultDescribeState(const std::string& state) {
-    return state.empty() ? "<empty>" : state;
-}
-
-// ==============================================
-// CheckResult (same as Go)
-// ==============================================
-
-enum class CheckResult {
-    Ok,      // linearizable
-    Illegal, // not linearizable
-    Unknown  // timed out (possible false positive)
-};
-
-} // namespace porcupine
+} // namespace models

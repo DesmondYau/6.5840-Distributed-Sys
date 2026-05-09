@@ -19,8 +19,9 @@ set(LAB3_SOURCES
 
 # Lab4 files
 file(GLOB LAB4_SOURCES
-    "src/*.cpp"
     "tests/*.cpp"
+    "tests/porcupine/*.cpp"
+    "src/*.cpp"
 )
 
 add_executable(kvRaft_tests

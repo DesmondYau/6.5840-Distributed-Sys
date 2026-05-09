@@ -30,9 +30,11 @@ public:
             ReplyMsg replyMsg;
 
             // Wait for 100 milliseconds for reply
-            if (fut.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) {
+            if (fut.wait_for(std::chrono::milliseconds(100)) == std::future_status::ready) 
+            {
                 replyMsg = fut.get();
-                if (replyMsg.ok) {
+                if (replyMsg.ok) 
+                {
                     try 
                     {
                         decodeReply(replyMsg.reply, reply);
@@ -45,7 +47,9 @@ public:
                     }
                 }
                 return false;
-            } else {
+            } 
+            else 
+            {
                 // Timeout: peer didn’t respond
                 return false;
             }

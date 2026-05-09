@@ -33,7 +33,8 @@ public:
 
         // Split "Raft.AppendEntries" into serviceName and methodName
         auto dotPos = rpcType.find('.');
-        if (dotPos == std::string::npos) return false;
+        if (dotPos == std::string::npos) 
+            return false;
         std::string serviceName = rpcType.substr(0, dotPos);
         std::string methodName  = rpcType.substr(dotPos + 1);
 

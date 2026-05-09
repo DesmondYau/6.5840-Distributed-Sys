@@ -5,14 +5,16 @@
 #include <chrono>
 #include <future>
 
-namespace labrpc {
+namespace labrpc 
+{
 
 Network::Network() 
 {
     // Start a network dispatcher thread and listen to 
-    m_dispatcher = std::thread([this]() {
+    m_dispatcher = std::thread([this]() 
+    {
         while (!m_done) {
-            std::shared_ptr<reqMsg> xreq;
+            std::shared_ptr<ReqMsg> xreq;
             {
                 std::unique_lock<std::mutex> lock(m_queueMu);
                 m_cv.wait(lock, [this]() { return m_done || !m_reqQueue.empty(); });
@@ -45,7 +47,7 @@ Network::~Network()
 
 void Network::send(const std::string& endpointName, const std::string& rpcType, const std::string& args, std::promise<ReplyMsg> prom) 
 {
-    auto req = std::make_shared<reqMsg>();
+    auto req = std::make_shared<ReqMsg>();
     req->endpointName = endpointName;
     req->rpcType = rpcType;
     req->args = args;
@@ -68,7 +70,11 @@ void Network::deliver(const std::string& endpointName, const std::string& rpcTyp
     std::string serverName;
     {
         std::lock_guard<std::mutex> lock(m_mu);
-        if (m_enabledMap[endpointName] && m_connectionMap.contains(endpointName) && m_servers.contains(m_connectionMap[endpointName]))
+        bool serverValid {m_enabledMap[endpointName] && m_connectionMap.contains(endpointName) && 
+                          m_servers.contains(m_connectionMap[endpointName]) && 
+                          m_servers[m_connectionMap[endpointName]] != nullptr
+                         };
+        if (serverValid)
         {
             serverName = m_connectionMap[endpointName];
             server = m_servers[serverName];

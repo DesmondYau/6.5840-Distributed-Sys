@@ -83,24 +83,10 @@ CMakeFiles/kvRaft_tests.dir/src/config.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/kvRaft_tests.dir/src/config.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab4_KvRaft/src/config.cpp -o CMakeFiles/kvRaft_tests.dir/src/config.cpp.s
 
-CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o: CMakeFiles/kvRaft_tests.dir/flags.make
-CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o: /6.5840/Lab4_KvRaft/src/kvraft.cpp
-CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o: CMakeFiles/kvRaft_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o -MF CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o.d -o CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o -c /6.5840/Lab4_KvRaft/src/kvraft.cpp
-
-CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab4_KvRaft/src/kvraft.cpp > CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.i
-
-CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab4_KvRaft/src/kvraft.cpp -o CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.s
-
 CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o: CMakeFiles/kvRaft_tests.dir/flags.make
 CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o: /6.5840/Lab4_KvRaft/src/kvserver.cpp
 CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o: CMakeFiles/kvRaft_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o -MF CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o.d -o CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o -c /6.5840/Lab4_KvRaft/src/kvserver.cpp
 
 CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.i: cmake_force
@@ -114,7 +100,7 @@ CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.s: cmake_force
 CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o: CMakeFiles/kvRaft_tests.dir/flags.make
 CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o: /6.5840/Lab4_KvRaft/tests/KV_test.cpp
 CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o: CMakeFiles/kvRaft_tests.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o -MF CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o.d -o CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o -c /6.5840/Lab4_KvRaft/tests/KV_test.cpp
 
 CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.i: cmake_force
@@ -124,6 +110,20 @@ CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.i: cmake_force
 CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab4_KvRaft/tests/KV_test.cpp -o CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.s
+
+CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o: CMakeFiles/kvRaft_tests.dir/flags.make
+CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o: /6.5840/Lab4_KvRaft/tests/porcupine/visualization.cpp
+CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o: CMakeFiles/kvRaft_tests.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/6.5840/Lab4_KvRaft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o -MF CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o.d -o CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o -c /6.5840/Lab4_KvRaft/tests/porcupine/visualization.cpp
+
+CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /6.5840/Lab4_KvRaft/tests/porcupine/visualization.cpp > CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.i
+
+CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /6.5840/Lab4_KvRaft/tests/porcupine/visualization.cpp -o CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.s
 
 CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/raft.cpp.o: CMakeFiles/kvRaft_tests.dir/flags.make
 CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/raft.cpp.o: /6.5840/Lab3_Raft/src/raft.cpp
@@ -184,9 +184,9 @@ CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/rpc/labrpc.cpp.s: cmake_force
 # Object files for target kvRaft_tests
 kvRaft_tests_OBJECTS = \
 "CMakeFiles/kvRaft_tests.dir/src/config.cpp.o" \
-"CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o" \
 "CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o" \
 "CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o" \
+"CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o" \
 "CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/raft.cpp.o" \
 "CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/persister.cpp.o" \
 "CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/helper.cpp.o" \
@@ -196,9 +196,9 @@ kvRaft_tests_OBJECTS = \
 kvRaft_tests_EXTERNAL_OBJECTS =
 
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/src/config.cpp.o
-kvRaft_tests: CMakeFiles/kvRaft_tests.dir/src/kvraft.cpp.o
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/src/kvserver.cpp.o
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/tests/KV_test.cpp.o
+kvRaft_tests: CMakeFiles/kvRaft_tests.dir/tests/porcupine/visualization.cpp.o
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/raft.cpp.o
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/persister.cpp.o
 kvRaft_tests: CMakeFiles/kvRaft_tests.dir/6.5840/Lab3_Raft/src/helper.cpp.o

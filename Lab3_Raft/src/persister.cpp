@@ -53,6 +53,13 @@ size_t Persister::raftStateSize()
     return m_raftstate.size();
 }
 
+size_t Persister::snapshotSize() 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    return m_snapshot.size();
+}
+
+
 /*
 Persister::Persister(const Persister& persister) 
 {
@@ -87,10 +94,5 @@ void Persister::SaveStateAndSnapshot(const std::vector<uint8_t>& state,
 std::vector<uint8_t> Persister::ReadSnapshot() {
     std::lock_guard<std::mutex> lock(m_mu);
     return m_snapshot;
-}
-
-int Persister::SnapshotSize() {
-    std::lock_guard<std::mutex> lock(m_mu);
-    return static_cast<int>(m_snapshot.size());
 }
 */

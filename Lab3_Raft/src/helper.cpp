@@ -106,6 +106,7 @@ std::string encodeArgs(const Raft::InstallSnapshotArgs& a)
     return j.dump();
 }
 
+
 // Decode Raft replies (String -> Raft AppendEntriesReply)
 void decodeReply(const std::string& replyStr, Raft::AppendEntriesReply& r) {
     nlohmann::json j = nlohmann::json::parse(replyStr);

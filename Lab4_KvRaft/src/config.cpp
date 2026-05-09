@@ -1,9 +1,14 @@
-// config.cc
-#include "config.hpp"
 #include <random>
 #include <thread>
 #include <iomanip>
+#include "config.hpp"
+#include "kvserver.hpp"
+#include "clerk.hpp"
+#include "persister.hpp"
+#include "rpc/labrpc.hpp"
+#include "rpc/server.hpp"
 
+/*
 static std::string randstring(int n) {
     static const char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
     std::string s(n, '0');
@@ -15,281 +20,453 @@ static std::string randstring(int n) {
     }
     return s;
 }
+*/
 
-Config::Config(int n_, bool unreliable, int maxraftstate_)
-    : n(n_), maxraftstate(maxraftstate_), start(std::chrono::steady_clock::now())
+Config::Config(int num, bool unreliable, int maxraftstate)
+    : m_num {num}
+    , m_maxraftstate {maxraftstate}
+    , m_start {std::chrono::steady_clock::now()}
+    , m_net {std::make_shared<labrpc::Network>()}
 {
-    net = labrpc::MakeNetwork();
-    kvservers.resize(n);
-    saved.resize(n);
-    endnames.resize(n);
-    for (int i = 0; i < n; ++i) {
-        StartServer(i);
-    }
-    ConnectAll();
-    net->Reliable(!unreliable);
+    m_kvservers.resize(m_num);
+    m_persisters.resize(m_num);
+    m_endpointNames.resize(m_num, std::vector<std::string>(m_num));
+
+    m_nextClientId = m_num + 1000;
+
+    m_net->setReliable(!unreliable);
 }
 
-Config::~Config() {
+Config::~Config() 
+{
     cleanup();
 }
 
-void Config::begin(const std::string& description) {
+// ===================================================================
+// Test control
+// ===================================================================
+
+void Config::begin(const std::string& description) 
+{
     std::cout << description << " ..." << std::endl;
-    t0 = std::chrono::steady_clock::now();
+    m_t0 = std::chrono::steady_clock::now();
     rpcs0 = rpcTotal();
-    ops = 0;
+    m_ops = 0;
 }
 
-void Config::end() {
+void Config::end() 
+{
+    cleanup();
     checkTimeout();
-    if (!t->failed()) {
-        auto duration = std::chrono::steady_clock::now() - t0;
-        double secs = std::chrono::duration<double>(duration).count();
-        int nrpc = rpcTotal() - rpcs0;
-        int nops = ops.load();
-        std::cout << " ... Passed -- "
-                  << std::fixed << std::setprecision(1) << secs << "s "
-                  << n << " " << nrpc << " " << nops << std::endl;
+
+    auto duration = std::chrono::steady_clock::now() - m_t0;
+    double secs = std::chrono::duration<double>(duration).count();
+    int nrpc = rpcTotal() - rpcs0;
+    int nops = m_ops.load();
+
+    std::cout << " ... Passed -- "
+              << std::fixed << std::setprecision(1) << secs << "s "
+              << m_num << " " << nrpc << " " << nops << std::endl;
+}
+
+void Config::op() 
+{
+    m_ops.fetch_add(1, std::memory_order_relaxed);
+}
+
+// ===================================================================
+// Server Management
+// ===================================================================
+
+
+
+void Config::startServer(int i) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+
+    // 1. fresh set of labrpc Endpoint names
+    for (int j = 0; j < m_num; ++j) 
+    {
+        m_endpointNames[i][j] = "From_" + std::to_string(i) + "_To_" + std::to_string(j);
     }
-}
 
-void Config::op() {
-    ops.fetch_add(1, std::memory_order_relaxed);
-}
+    // 2. Create fresh labrpc Endpoints and connect them in labrpc
+    std::vector<std::shared_ptr<labrpc::Endpoint>> peers;
+    for (int j = 0; j < m_num; ++j) 
+    {
+        auto endpoint = m_net->makeEndpoint(m_endpointNames[i][j]);
+        m_net->connect(m_endpointNames[i][j], std::to_string(j));
 
-void Config::cleanup() {
-    std::lock_guard<std::mutex> lock(mu);
-    for (auto* srv : kvservers) {
-        if (srv) srv->Kill();
+        peers.push_back(endpoint);
     }
-    if (net) net->Cleanup();
-    checkTimeout();
-}
 
-size_t Config::LogSize() {
-    size_t maxsz = 0;
-    for (const auto& p : saved) {
-        if (p) maxsz = std::max(maxsz, p->RaftStateSize());
+    // 3. Fresh persister (copy old state if exists)
+    if (m_persisters[i]) 
+    {
+        m_persisters[i] = std::make_shared<Persister>(*m_persisters[i]);
+    } 
+    else 
+    {
+        m_persisters[i] = std::make_shared<Persister>();
     }
-    return maxsz;
+
+    // 4. Create the labrpc::Server that will host the KVServer
+    auto labrpcServer = std::make_shared<labrpc::Server>();
+
+    // 5. Create the KVServer using factor function
+    m_kvservers[i] = startKVServer(i, m_maxraftstate, labrpcServer.get(), m_persisters[i], peers);
+
+    // Register server with network
+    m_net->addServer(std::to_string(i), labrpcServer);
+
+    std::cout << "[Config] Started server " << i << std::endl;
 }
 
-size_t Config::SnapshotSize() {
-    size_t maxsz = 0;
-    for (const auto& p : saved) {
-        if (p) maxsz = std::max(maxsz, p->SnapshotSize());
+void Config::shutdownServer(int i) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+
+    // Flips boolean flag for ths server endpoint in labrpc to false
+    disconnectUnlocked(i, all());
+    // Remove server from the "routing map" in labrpc
+    m_net->deleteServer(std::to_string(i));
+
+    
+    if (m_persisters[i]) 
+    {
+        // Copy old persister's content to save the last persisted state in a different part of the computer's memory
+        // Any background threads that might make changes after shutdownServer is called would only make changes to the old persister
+        m_persisters[i] = std::make_unique<Persister>(*m_persisters[i]);
     }
-    return maxsz;
-}
 
-int Config::rpcTotal() {
-    return net ? net->GetTotalCount() : 0;
-}
+    if (m_kvservers[i]) 
+    {
+        // 1. Tell the server to gracefully shut down its threads
+        m_kvservers[i]->kill();
 
-void Config::checkTimeout() {
-    if (std::chrono::steady_clock::now() - start > std::chrono::seconds(120)) {
-        std::cerr << "test took longer than 120 seconds" << std::endl;
+        // 2. Destroy the object and set the pointer in the array to nullptr
+        m_kvservers[i].reset();
     }
+
+    std::cout << "[Config] Shutedown server " << i << std::endl;
 }
 
-// ---------------------------------------------------------------------------
-// Connection management
-// ---------------------------------------------------------------------------
-void Config::connectUnlocked(int i, const std::vector<int>& to) {
-    for (int j : to) {
-        std::string endname = endnames[i][j];
-        net->Enable(endname, true);
-    }
-    for (int j : to) {
-        std::string endname = endnames[j][i];
-        net->Enable(endname, true);
-    }
-}
+// ===================================================================
+// Network Connectivity
+// ===================================================================
 
-void Config::disconnectUnlocked(int i, const std::vector<int>& from) {
-    for (int j : from) {
-        if (!endnames[i].empty()) {
-            std::string endname = endnames[i][j];
-            net->Enable(endname, false);
+void Config::connectAll() 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+
+    for (int i = 0; i < m_num; ++i) 
+    {
+        for (int j = 0; j < m_num; ++j) 
+        {
+            if (!m_endpointNames[i].empty()) 
+            {
+                m_net->enable(m_endpointNames[i][j], true);
+            }
         }
     }
-    for (int j : from) {
-        if (!endnames[j].empty()) {
-            std::string endname = endnames[j][i];
-            net->Enable(endname, false);
-        }
-    }
 }
 
-void Config::ConnectAll() {
-    std::lock_guard<std::mutex> lock(mu);
-    for (int i = 0; i < n; ++i) {
-        connectUnlocked(i, All());
-    }
-}
 
-void Config::partition(const std::vector<int>& p1, const std::vector<int>& p2) {
-    std::lock_guard<std::mutex> lock(mu);
-    for (int i : p1) {
+void Config::partition(const std::vector<int>& p1, const std::vector<int>& p2) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    for (int i : p1) 
+    {
         disconnectUnlocked(i, p2);
         connectUnlocked(i, p1);
     }
-    for (int i : p2) {
+
+    for (int i : p2) 
+    {
         disconnectUnlocked(i, p1);
         connectUnlocked(i, p2);
     }
 }
 
-// ---------------------------------------------------------------------------
-// Server management
-// ---------------------------------------------------------------------------
-void Config::ShutdownServer(int i) {
-    std::lock_guard<std::mutex> lock(mu);
-    disconnectUnlocked(i, All());
-    net->DeleteServer(i);
-
-    if (kvservers[i]) {
-        KVServer* kv = kvservers[i];
-        kvservers[i] = nullptr;
-        mu.unlock();
-        kv->Kill();
-        mu.lock();
+void Config::connectUnlocked(int i, const std::vector<int>& to) 
+{
+    for (int j : to) 
+    {
+        if (!m_endpointNames[i].empty()) 
+        {
+            m_net->enable(m_endpointNames[i][j], true);
+        }
+    }
+    for (int j : to) 
+    {
+        if (!m_endpointNames[j].empty()) {
+            m_net->enable(m_endpointNames[j][i], true);
+        }
     }
 }
 
-void Config::StartServer(int i) {
-    std::lock_guard<std::mutex> lock(mu);
-
-    // fresh set of ClientEnd names
-    endnames[i].resize(n);
-    for (int j = 0; j < n; ++j) {
-        endnames[i][j] = randstring(20);
+void Config::disconnectUnlocked(int i, const std::vector<int>& from) 
+{
+    for (int j : from) 
+    {
+        if (!m_endpointNames[i].empty()) 
+        {
+            m_net->enable(m_endpointNames[i][j], false);
+        }
     }
-
-    // fresh set of ClientEnds
-    std::vector<labrpc::ClientEnd*> ends(n);
-    for (int j = 0; j < n; ++j) {
-        ends[j] = net->MakeEnd(endnames[i][j]);
-        net->Connect(endnames[i][j], j);
+    for (int j : from) {
+        if (!m_endpointNames[j].empty()) 
+        {
+            m_net->enable(m_endpointNames[j][i], false);
+        }
     }
-
-    // fresh persister
-    if (saved[i] == nullptr) {
-        saved[i] = std::make_unique<raft::Persister>();
-    } else {
-        saved[i] = saved[i]->Copy();
-    }
-
-    kvservers[i] = StartKVServer(ends, i, saved[i].get(), maxraftstate);
-
-    // register services
-    auto kvsvc = labrpc::MakeService(kvservers[i]);
-    auto rfsvc = labrpc::MakeService(kvservers[i]->rf);
-    auto srv = labrpc::MakeServer();
-    srv->AddService(kvsvc);
-    srv->AddService(rfsvc);
-    net->AddServer(i, srv);
 }
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // Client management
-// ---------------------------------------------------------------------------
-Clerk* Config::makeClient(const std::vector<int>& to) {
-    std::lock_guard<std::mutex> lock(mu);
+// ===========================================================================
 
-    std::vector<std::string> endnames_local(n);
-    std::vector<labrpc::ClientEnd*> ends(n);
+Clerk* Config::makeClient(const std::vector<int>& to) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
 
-    for (int j = 0; j < n; ++j) {
-        endnames_local[j] = randstring(20);
-        ends[j] = net->MakeEnd(endnames_local[j]);
-        net->Connect(endnames_local[j], j);
+    // Generate fresh unique endpoint names for this client
+    std::vector<std::string> endnames_local(m_num);
+    for (int j = 0; j < m_num; ++j) 
+    {
+        endnames_local[j] = "From_Client_" + std::to_string(m_nextClientId) + "_To_" + std::to_string(j);
     }
 
-    Clerk* ck = MakeClerk(ends);   // assume this function exists
-    clerks[ck] = endnames_local;
-    nextClientId++;
+    // Create and register the endpoints with the network
+    for (int j = 0; j < m_num; ++j) 
+    {
+        m_net->makeEndpoint(endnames_local[j]);
+        m_net->connect(endnames_local[j], std::to_string(j));
+    }
 
-    ConnectClientUnlocked(ck, to);
+    // Prepare list of server endpoint names for client to talk to
+    std::vector<std::string> servers;
+    for (int j = 0; j < m_num; ++j)
+    {
+        servers.push_back(endnames_local[j]);
+    }
+
+    // Shuffle the server list. This tests the Clerk’s leader discovery and retry logic more thoroughly
+    // Prevents the client from always contacting servers in the same fixed order (which could hide bugs)
+    // In real distributed systems, clients should not assume any particular order of servers
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(servers.begin(), servers.end(), g);
+
+
+    // Create the Clerk
+    auto ck_unique = std::make_unique<Clerk>(m_net.get(), servers);
+    Clerk* ck = ck_unique.release();                                        // release ownership to the test caller to avoid dangling pointer
+
+    // Store mapping
+    m_clerks[ck] = std::move(endnames_local);
+
+    // Increment counter 
+    m_nextClientId++;
+
+    // Connect the client to the requested servers
+    connectClientUnlocked(ck, to);
+
     return ck;
 }
 
-void Config::deleteClient(Clerk* ck) {
-    std::lock_guard<std::mutex> lock(mu);
-    clerks.erase(ck);
+void Config::deleteClient(Clerk* ck) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    m_clerks.erase(ck);
+    delete ck;                  // Ensure memory is cleaned up
 }
 
-void Config::ConnectClientUnlocked(Clerk* ck, const std::vector<int>& to) {
-    auto it = clerks.find(ck);
-    if (it == clerks.end()) return;
-    const auto& names = it->second;
+void Config::connectClient(Clerk* ck, const std::vector<int>& to) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    connectClientUnlocked(ck, to);
+}
+
+void Config::connectClientUnlocked(Clerk* ck, const std::vector<int>& to) 
+{
+    if (!m_clerks.contains(ck))
+    {
+        return;
+    }
+
+    const auto& names = m_clerks.at(ck); 
+    
     for (int j : to) {
-        net->Enable(names[j], true);
+        // Enable the network endpoints for the specified servers
+        m_net->enable(names[j], true); 
     }
 }
 
-void Config::ConnectClient(Clerk* ck, const std::vector<int>& to) {
-    std::lock_guard<std::mutex> lock(mu);
-    ConnectClientUnlocked(ck, to);
+void Config::disconnectClient(Clerk* ck, const std::vector<int>& from) 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    disconnectClientUnlocked(ck, from);
 }
 
-void Config::DisconnectClientUnlocked(Clerk* ck, const std::vector<int>& from) {
-    auto it = clerks.find(ck);
-    if (it == clerks.end()) return;
-    const auto& names = it->second;
-    for (int j : from) {
-        net->Enable(names[j], false);
+void Config::disconnectClientUnlocked(Clerk* ck, const std::vector<int>& to) 
+{
+    if (!m_clerks.contains(ck))
+    {
+        return;
+    }
+
+    const auto& names = m_clerks.at(ck); 
+    
+    for (int j : to) {
+        // Enable the network endpoints for the specified servers
+        m_net->enable(names[j], false); 
     }
 }
 
-void Config::DisconnectClient(Clerk* ck, const std::vector<int>& from) {
-    std::lock_guard<std::mutex> lock(mu);
-    DisconnectClientUnlocked(ck, from);
-}
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // Helper functions
-// ---------------------------------------------------------------------------
-std::vector<int> Config::All() {
-    std::vector<int> all(n);
-    for (int i = 0; i < n; ++i) all[i] = i;
+// ===========================================================================
+
+size_t Config::logSize() {
+    size_t maxsz = 0;
+    for (const auto& p : m_persisters) 
+    {
+        if (p) 
+        {
+            maxsz = std::max(maxsz, p->raftStateSize());
+        }
+    }
+    return maxsz;
+}
+
+size_t Config::snapshotSize() {
+    size_t maxsz = 0;    
+    for (const auto& p : m_persisters) 
+    {
+        if (p)
+        {
+            maxsz = std::max(maxsz, p->snapshotSize());
+        }
+    }
+    return maxsz;
+}
+
+int Config::rpcTotal() {
+    return m_net ? m_net->getTotalRPCCount() : 0;
+}
+
+void Config::checkTimeout() {
+    if (std::chrono::steady_clock::now() - m_start > std::chrono::seconds(120)) 
+    {
+        std::cerr << "test took longer than 120 seconds" << std::endl;
+        exit(1);
+    }
+}
+
+std::vector<int> Config::all() 
+{
+    std::vector<int> all(m_num);
+    for (int i = 0; i < m_num; ++i)
+    {
+        all[i] = i;
+    }
     return all;
 }
 
-std::pair<bool, int> Config::Leader() {
-    std::lock_guard<std::mutex> lock(mu);
-    for (int i = 0; i < n; ++i) {
-        if (kvservers[i]) {
-            bool isLeader = kvservers[i]->rf->IsLeader();  // assume your Raft has IsLeader()
-            if (isLeader) return {true, i};
+std::pair<bool, int> Config::getLeader() 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    for (int i = 0; i < m_num; ++i) {
+        if (m_kvservers[i]) 
+        {
+            // Query the underlying Raft instance to check its leadership status
+            bool isLeader = m_kvservers[i]->getRaft()->isLeader();  
+            if (isLeader) 
+                return {true, i};
         }
     }
     return {false, -1};
 }
 
-std::pair<std::vector<int>, std::vector<int>> Config::make_partition() {
-    auto [isLeader, leader] = Leader();
+/**
+ * Splits the cluster into two groups: p1 (majority) and p2 (minority).
+ * Specifically places the current leader into the minority group p2[cite: 6].
+ */
+std::pair<std::vector<int>, std::vector<int>> Config::make_partition() 
+{
+    auto [isLeader, leader] = getLeader();
     std::vector<int> p1, p2;
-    p1.reserve(n/2 + 1);
-    p2.reserve(n/2);
+    p1.reserve(m_num/2 + 1); 
+    p2.reserve(m_num/2);
 
     int j = 0;
-    for (int i = 0; i < n; ++i) {
-        if (i != leader) {
-            if (j < static_cast<int>(p1.size())) {
+    for (int i = 0; i < m_num; ++i) 
+    { 
+        // Skip the leader during the initial distribution
+        if (i != leader) 
+        {
+            // Fill the first group (p1) until it reaches majority capacity
+            if (j < static_cast<int>(p1.capacity())) 
+            {
                 p1.push_back(i);
-            } else {
+            } 
+            else 
+            {
                 p2.push_back(i);
             }
             ++j;
         }
     }
-    p2.push_back(leader);
+    // Add the leader to p2, ensuring it is isolated from the majority p1
+    if (leader != -1) 
+    {
+        p2.push_back(leader);
+    }
     return {p1, p2};
 }
 
-// Factory
-Config* make_config(testing::Test* t, int n, bool unreliable, int maxraftstate) {
-    return new Config(n, unreliable, maxraftstate);
+void Config::cleanup() 
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    for (auto& srv : m_kvservers) 
+    {
+        if (srv)
+        {
+            srv->kill();
+        } 
+    }
+    if (m_net)
+    {
+        m_net->cleanup();
+    } 
+    checkTimeout();
+}
+
+
+std::unique_ptr<Config> make_config(int n, bool unreliable, int maxraftstate)
+{
+    // Check for CPU count
+    static std::once_flag ncpu_once;
+    std::call_once(ncpu_once, [](){
+        if (std::thread::hardware_concurrency() < 2) 
+        {
+            std::cout << "warning: only one CPU, which may conceal locking bugs" << std::endl;
+        }
+    });
+
+    // Create the Config Object which is done after config metadata is ready
+    auto cfg = std::make_unique<Config>(n, unreliable, maxraftstate);
+
+    // Create a full set of KV servers 
+    for (int i = 0; i < n; ++i) 
+    {
+        cfg->startServer(i);
+    }
+    
+    // Finalize network connectivity
+    cfg->connectAll();
+
+    return cfg;
 }

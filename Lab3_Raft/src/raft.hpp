@@ -97,9 +97,10 @@ public:
     void installSnapshot(const InstallSnapshotArgs& args, InstallSnapshotReply& reply);
     void broadcastAppendEntries();
     void startElection();
-    
+    bool isLeader();
     void snapshot(uint64_t lastIncludedIndex, const std::string& snapshot);
     void kill();
+    
     std::tuple<int, int, bool> start(const std::string& command);
     std::pair<uint32_t, State> getTermState();
    
@@ -131,21 +132,20 @@ private:
     uint64_t m_lastApplied { 0 };
     uint64_t m_lastIncludedIndex { 0 };
     uint32_t m_lastIncludedTerm { 0 };
-    State m_state { State::FOLLOWER };                                           // Leader, Candidate, Follower
+    State m_state { State::FOLLOWER };                                              // Leader, Candidate, Follower
     std::vector<std::shared_ptr<LogEntry>> m_logs {};
     std::vector<uint64_t> m_nextindex {};
     std::vector<uint64_t> m_matchIndex {};
-    std::vector<std::shared_ptr<labrpc::Endpoint>> m_peers {};                              // Vector of RPC endpoint of all peers in the network
-    std::shared_ptr<Persister> m_persister {};                                      // Persister
-    std::shared_ptr<ApplyChannel> m_applyChannel {};                                // ApplyChannel tfor sending ApplyMsg for each newly committed log entry   
+    std::vector<std::shared_ptr<labrpc::Endpoint>> m_peers {};                      // Vector of RPC endpoint of all peers in the network
+    std::shared_ptr<Persister> m_persister {};                                      // Persister object
+    std::shared_ptr<ApplyChannel> m_applyChannel {};                                // ApplyChannel for sending ApplyMsg for each newly committed log entry   
     std::shared_ptr<Logger> m_logger {};
     std::chrono::steady_clock::time_point m_lastHeartbeat{} ;                       // Timepoint where we last receive a valid AppendEntries RPC or granting vote
     std::chrono::milliseconds m_electionTimeout {};                                 // Timeout duration in milliseconds
     ThreadPool m_threadPool;
     std::thread m_raftThread {};
     void* m_last_vector_addr = nullptr;
-    
-
+    bool m_newLogArrive {false};
     
 
     std::atomic<bool> m_dead { false };                                          // Track if raft instance is dead. Atomic since the variable does not coordinate with other variables/state

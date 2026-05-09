@@ -1020,6 +1020,8 @@ CMakeFiles/raft_tests.dir/src/persister.cpp.o: /6.5840/Lab3_Raft/src/persister.c
 
 CMakeFiles/raft_tests.dir/src/raft.cpp.o: /6.5840/Lab3_Raft/src/raft.cpp \
   /6.5840/Lab3_Raft/include/json.hpp \
+  /6.5840/Lab3_Raft/include/json.hpp \
+  /6.5840/Lab3_Raft/src/rpc/endpoint.hpp \
   /6.5840/Lab3_Raft/src/config.hpp \
   /6.5840/Lab3_Raft/src/helper.hpp \
   /6.5840/Lab3_Raft/src/logger.hpp \

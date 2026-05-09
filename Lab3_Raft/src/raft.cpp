@@ -70,12 +70,15 @@ void Raft::startRaft()
     std::unique_lock<std::mutex> lock(m_mu);
     while (!m_dead.load())
     {   
+        /*
         static auto last_log_time = std::chrono::steady_clock::now();
         auto now = std::chrono::steady_clock::now();
-        if (now - last_log_time > std::chrono::milliseconds(500)) {
+        if (now - last_log_time > std::chrono::milliseconds(500)) 
+        {
             m_logger->log(LogLevel::DEBUG, LogEvent(LogEvent::Type::HEARTBEAT, m_id, m_currentTerm, "Loop Pulse (Active)"));
             last_log_time = now;
         }
+        */
 
         if (m_state == Raft::State::FOLLOWER)
         {
@@ -127,8 +130,11 @@ void Raft::startRaft()
         {
             // Wait for next heartbeat interval, but allow immediate wake-up via notify_all()
             m_cv.wait_for(lock, std::chrono::milliseconds(100), [this] {
-                return m_dead.load() || m_state != State::LEADER;
+                return m_dead.load() || m_state != State::LEADER || m_newLogArrive;
             });
+
+            // Reset the flag immediately after waking up
+            m_newLogArrive = false;
 
             if (m_dead.load() || m_state != State::LEADER)
                 continue;
@@ -140,7 +146,7 @@ void Raft::startRaft()
         else
         {
             LogEvent event(LogEvent::Type::ERROR, m_id, m_currentTerm, "Invalid State!");
-            m_logger->log(LogLevel::ERROR, event);
+            m_logger->logRaft(LogLevel::ERROR, event);
             return;
         }
     }
@@ -166,7 +172,7 @@ void Raft::startElection()
         m_electionTimeout = std::chrono::milliseconds(helperGenerateTimeout());
 
         LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Starting Election with term " + std::to_string(m_currentTerm));
-        m_logger->log(LogLevel::INFO, event);
+        m_logger->logRaft(LogLevel::INFO, event);
 
         helperPersist();
     }
@@ -203,7 +209,7 @@ void Raft::startElection()
                 {
                     m_votesGranted++;
                     LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Received true vote from server " + std::to_string(id));
-                    m_logger->log(LogLevel::INFO, event);  
+                    m_logger->logRaft(LogLevel::INFO, event);  
                     
                     m_cv.notify_all();          // ← wake up main thread to check if there is enough vote
                 }
@@ -216,13 +222,6 @@ void Raft::startElection()
         //}).detach(); 
         });       
     }    
-}
-
-
-bool Raft::helperNeedsSnapshot (size_t peerId)
-{
-    // m_nextindex <= m_lastIncludedIndex, meaning that the logs to recover the follower is in snapshot -> send InstallSnapshot RPC
-    return m_nextindex[peerId] <= m_lastIncludedIndex;
 }
 
 
@@ -281,7 +280,7 @@ void Raft::broadcastAppendEntries()
             uint64_t prevLogIndex = m_nextindex[id] - 1;
             auto relPrevLogIndex = helperGetRelativeIndex(prevLogIndex);
             auto relNextIndex = helperGetRelativeIndex(m_nextindex[id]);
-            std::cout << "m_nextIndex " << m_nextindex[id] << " prevLogIndex " << prevLogIndex << " m_lastIncludedIndex " << m_lastIncludedIndex << " relPrevLogIndex " << relPrevLogIndex << std::endl;
+            // std::cout << "m_nextIndex " << m_nextindex[id] << " prevLogIndex " << prevLogIndex << " m_lastIncludedIndex " << m_lastIncludedIndex << " relPrevLogIndex " << relPrevLogIndex << std::endl;
             uint32_t prevLogTerm  = m_logs[relPrevLogIndex]->term;  
             
             // We should use size of log entries to determine whether the AppendEntries RPC is a heartbeat (empty) or not (with valid log entries)
@@ -303,7 +302,7 @@ void Raft::broadcastAppendEntries()
             m_currentTerm,
             logEntries.empty() ? "Broadcasting Heartbeat to " + std::to_string(id) : "Broadcasting AppendEntries to " + std::to_string(id) + " starting:" + std::to_string(args.preLogIndex + 1) + " ending:" + std::to_string(args.preLogIndex + logEntries.size())
         };
-        m_logger->log(LogLevel::DEBUG, event);
+        m_logger->logRaft(LogLevel::DEBUG, event);
         
 
         uint64_t termStarted;
@@ -349,7 +348,7 @@ void Raft::broadcastAppendEntries()
                         return;
 
                     LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Node " + std::to_string(id) + " ACKED index " + std::to_string(args.preLogIndex + args.entries.size()));
-                    m_logger->log(LogLevel::INFO, event);
+                    m_logger->logRaft(LogLevel::INFO, event);
 
                     // Update matchIndex and nextindex for each follower. Remeber to move matchIndex by size of vector transmitted
                     // Note that AppendEntries RPC can arrive out of order (e.g. RPC2 arrive before RPC1) which might have updated m_matchIndex in the mean time
@@ -369,14 +368,14 @@ void Raft::broadcastAppendEntries()
                                                     false, {}, 0, 0});
 
                         LogEvent event(LogEvent::Type::APPLY, m_id, m_currentTerm, "Apply log with index: " + std::to_string(m_lastApplied) + " and entry: " + m_logs[m_lastApplied - m_lastIncludedIndex]->command);
-                        m_logger->log(LogLevel::INFO, event);
+                        m_logger->logRaft(LogLevel::INFO, event);
                     }
                 }
                 else
                 {
                     std::lock_guard<std::mutex> lock(m_mu);
                     LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Node " + std::to_string(id) + " REJECT index " + std::to_string(args.preLogIndex + 1));
-                    m_logger->log(LogLevel::INFO, event);
+                    m_logger->logRaft(LogLevel::INFO, event);
 
                     if (m_dead.load() || m_state != State::LEADER) 
                         return;
@@ -407,7 +406,7 @@ void Raft::broadcastAppendEntries()
             {
                 // THIS IS THE MISSING LOG
                 LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "RPC FAILED/TIMEOUT to Node " + std::to_string(id));
-                m_logger->log(LogLevel::ERROR, event);
+                m_logger->logRaft(LogLevel::ERROR, event);
                 return;
             }
         //}).detach(); 
@@ -415,51 +414,6 @@ void Raft::broadcastAppendEntries()
     }
 }
 
-void Raft::helperTriggerInstallSnapshot(size_t id)
-{
-    InstallSnapshotArgs args;
-    {
-        if (m_dead.load() || m_state != State::LEADER)
-            return;
-        
-
-        args.term              = m_currentTerm;
-        args.leaderId          = m_id;
-        args.lastIncludedIndex = m_lastIncludedIndex;
-        args.lastIncludedTerm  = m_lastIncludedTerm;
-        args.offset            = 0;                    // Lab 3D sends full snapshot in one chunk
-        args.data              = m_persister->readSnapshot();
-        args.done              = true;
-    }
-
-    m_threadPool.enqueue([this, id, args]() {
-    //std::thread([this, id, args]() mutable {
-        InstallSnapshotReply reply;
-        bool received = sendInstallSnapshotRPC(static_cast<int32_t>(id), args, reply);
-
-        if (received)
-        {
-            std::lock_guard<std::mutex> lock(m_mu);
-            if (m_dead.load() || m_state != State::LEADER)
-                return;
-
-            if (reply.term > m_currentTerm)
-            {
-                helperStepDownToFollower(reply.term);
-            }
-            
-            // SUCCESS: follower has installed the snapshot
-            // Advance nextIndex and matchIndex so leader knows it is caught up
-            m_matchIndex[id] = m_lastIncludedIndex;
-            m_nextindex[id]  = m_lastIncludedIndex + 1;
-
-            LogEvent event(LogEvent::Type::SNAPSHOT, m_id, m_currentTerm, 
-                "Follower " + std::to_string(id) + " installed snapshot, nextIndex: " + std::to_string(m_nextindex[id]) + " args.lastIncludedTerm " + std::to_string(args.lastIncludedTerm));
-            m_logger->log(LogLevel::INFO, event);
-        }
-    //}).detach();
-    });
-}
 
 /*
     Public methods that are called by other raft node
@@ -468,10 +422,10 @@ void Raft::helperTriggerInstallSnapshot(size_t id)
 void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& reply)
 {
     {
-        m_logger->log(LogLevel::INFO, LogEvent(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Attempting to acquire lock for AppendEntries from " + std::to_string(args.leaderId)));
+        m_logger->logRaft(LogLevel::INFO, LogEvent(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Attempting to acquire lock for AppendEntries from " + std::to_string(args.leaderId)));
         std::lock_guard<std::mutex> lock(m_mu);
         LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "RECEIVED appendEntries from " + std::to_string(args.leaderId));
-        m_logger->log(LogLevel::INFO, event); 
+        m_logger->logRaft(LogLevel::INFO, event); 
 
         reply.term = m_currentTerm;
         reply.success = false;
@@ -534,7 +488,7 @@ void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& repl
             //m_electionTimeout = std::chrono::milliseconds(helperGenerateTimeout());
 
             LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Failed log consistency check relPreLogIndex " + std::to_string(relPreLogIndex) + " m_logs.size " + std::to_string(m_logs.size()));
-            m_logger->log(LogLevel::INFO, event); 
+            m_logger->logRaft(LogLevel::INFO, event); 
             return;
         }
     }
@@ -560,7 +514,7 @@ void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& repl
                     m_logs.resize(i + adj); // truncate conflicting suffix
                     mark = i;
                     LogEvent event(LogEvent::Type::DELETION, m_id, m_currentTerm, "Resizing logs to index:" + std::to_string(m_logs.size()-1 + m_lastIncludedIndex));
-                    m_logger->log(LogLevel::INFO, event); 
+                    m_logger->logRaft(LogLevel::INFO, event); 
 
                     break;
                 }
@@ -579,7 +533,7 @@ void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& repl
             m_logs.push_back(std::make_shared<LogEntry>(args.entries[i].command, args.entries[i].term));
             LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, 
                 "Append log entry with command:" + m_logs.back()->command + " and term:" + std::to_string(m_logs.back()->term) + " at index " + std::to_string(m_logs.size() - 1 + m_lastIncludedIndex));
-            m_logger->log(LogLevel::INFO, event);   
+            m_logger->logRaft(LogLevel::INFO, event);   
         }
 
         helperPersist();
@@ -607,7 +561,7 @@ void Raft::appendEntries(const AppendEntriesArgs& args, AppendEntriesReply& repl
                                         false, {}, 0, 0});
 
             LogEvent event(LogEvent::Type::APPLY, m_id, m_currentTerm, "Apply log with index:" + std::to_string(m_lastApplied) + " and entry:" + m_logs[m_lastApplied - m_lastIncludedIndex]->command);
-            m_logger->log(LogLevel::INFO, event);
+            m_logger->logRaft(LogLevel::INFO, event);
         }
     }
             
@@ -627,7 +581,7 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
     if (m_currentTerm > args.term)
     {
         LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Reject requestVote: Candidate has lower term");
-        m_logger->log(LogLevel::DEBUG, event);
+        m_logger->logRaft(LogLevel::DEBUG, event);
 
         return;
     }
@@ -652,7 +606,7 @@ void Raft::requestVote(const RequestVoteArgs& args, RequestVoteReply& reply)
             m_electionTimeout = std::chrono::milliseconds(helperGenerateTimeout());
 
             LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Voted for " + std::to_string(m_votedFor));
-            m_logger->log(LogLevel::INFO, event);
+            m_logger->logRaft(LogLevel::INFO, event);
         } 
 
         helperPersist();
@@ -785,7 +739,7 @@ void Raft::snapshot(uint64_t index, const std::string& snapshot)
 
     LogEvent event(LogEvent::Type::SNAPSHOT, m_id, m_currentTerm, "Snapshot taken including index: " + std::to_string(m_lastIncludedIndex) + " snapshot: " + 
                 std::string(snapshotByte.begin(), snapshotByte.end()) + " m_logs.size:" + std::to_string(m_logs.size()));
-    m_logger->log(LogLevel::INFO, event);
+    m_logger->logRaft(LogLevel::INFO, event);
 
 }
 
@@ -803,8 +757,10 @@ std::tuple<int, int, bool> Raft::start(const std::string& command)
     {
         // Leader appends the command to its log as a new entry
         LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Appended new log entry with command: " + command);
-        m_logger->log(LogLevel::INFO, event);
+        m_logger->logRaft(LogLevel::INFO, event);
+        
         m_logs.emplace_back(std::make_shared<LogEntry>(command, m_currentTerm));
+        m_newLogArrive = true;
     }
 
     helperPersist();
@@ -813,6 +769,12 @@ std::tuple<int, int, bool> Raft::start(const std::string& command)
 }
 
 
+
+bool Raft::isLeader()
+{
+    std::lock_guard<std::mutex> lock(m_mu);
+    return m_state == State::LEADER;
+}
 
 void Raft::kill()
 {
@@ -869,7 +831,7 @@ void Raft::helperUpdateLeaderCommitIndex()
         {
             m_commitIndex = N;
             LogEvent event(LogEvent::Type::REPLICATION, m_id, m_currentTerm, "Updated CommitIndex to: " + std::to_string(m_commitIndex));
-            m_logger->log(LogLevel::INFO, event);
+            m_logger->logRaft(LogLevel::INFO, event);
             break; // commitIndex only moves forward once per call
         }
     }
@@ -883,7 +845,7 @@ void Raft::helperPromoteToLeader()
     m_cv.notify_all();
     
     LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to LEADER");
-    m_logger->log(LogLevel::INFO, event);
+    m_logger->logRaft(LogLevel::INFO, event);
 
 }
 
@@ -893,7 +855,7 @@ void Raft::helperPromoteToCandidate()
     m_state = Raft::State::CANDIDATE;
     m_cv.notify_all();
     LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to CANDIDATE");
-    m_logger->log(LogLevel::INFO, event);
+    m_logger->logRaft(LogLevel::INFO, event);
 }
 
 void Raft::helperStepDownToFollower(uint32_t term)
@@ -906,7 +868,7 @@ void Raft::helperStepDownToFollower(uint32_t term)
     m_electionTimeout = std::chrono::milliseconds(helperGenerateTimeout());
 
     LogEvent event(LogEvent::Type::STATECHANGE, m_id, m_currentTerm, "State change to FOLLOWER");
-    m_logger->log(LogLevel::INFO, event);
+    m_logger->logRaft(LogLevel::INFO, event);
                         
     m_cv.notify_all();          // wake up main thread on state change
     
@@ -952,7 +914,7 @@ void Raft::helperReadPersist()
         
 
         LogEvent event(LogEvent::Type::PERSISTER, m_id, m_currentTerm, "No previous state from persister");
-        m_logger->log(LogLevel::INFO, event);
+        m_logger->logRaft(LogLevel::INFO, event);
         return;
     }
     else
@@ -977,7 +939,7 @@ void Raft::helperReadPersist()
             catch(...)
             {
                 LogEvent event(LogEvent::Type::ERROR, m_id, m_currentTerm, "Failed to parse snapshot");
-                m_logger->log(LogLevel::INFO, event);
+                m_logger->logRaft(LogLevel::INFO, event);
             }            
         }
 
@@ -998,7 +960,7 @@ void Raft::helperReadPersist()
     
         LogEvent event(LogEvent::Type::PERSISTER, m_id, m_currentTerm, "Restored state from persister lastIncludedIndex: " + std::to_string(m_lastIncludedIndex) + 
                     " lastIncludedTerm: " + std::to_string(m_logs[0]->term) + " last command:" + m_logs.back()->command);
-        m_logger->log(LogLevel::INFO, event);
+        m_logger->logRaft(LogLevel::INFO, event);
         for (auto& element : m_logs )
         {
             std::cout << element->command << " ";
@@ -1006,6 +968,60 @@ void Raft::helperReadPersist()
         std::cout << std::endl;
     }   
 }
+
+bool Raft::helperNeedsSnapshot (size_t peerId)
+{
+    // m_nextindex <= m_lastIncludedIndex, meaning that the logs to recover the follower is in snapshot -> send InstallSnapshot RPC
+    return m_nextindex[peerId] <= m_lastIncludedIndex;
+}
+
+void Raft::helperTriggerInstallSnapshot(size_t id)
+{
+    InstallSnapshotArgs args;
+    {
+        if (m_dead.load() || m_state != State::LEADER)
+            return;
+        
+
+        args.term              = m_currentTerm;
+        args.leaderId          = m_id;
+        args.lastIncludedIndex = m_lastIncludedIndex;
+        args.lastIncludedTerm  = m_lastIncludedTerm;
+        args.offset            = 0;                    // Lab 3D sends full snapshot in one chunk
+        args.data              = m_persister->readSnapshot();
+        args.done              = true;
+    }
+
+    m_threadPool.enqueue([this, id, args]() {
+    //std::thread([this, id, args]() mutable {
+        InstallSnapshotReply reply;
+        bool received = sendInstallSnapshotRPC(static_cast<int32_t>(id), args, reply);
+
+        if (received)
+        {
+            std::lock_guard<std::mutex> lock(m_mu);
+            if (m_dead.load() || m_state != State::LEADER)
+                return;
+
+            if (reply.term > m_currentTerm)
+            {
+                helperStepDownToFollower(reply.term);
+            }
+            
+            // SUCCESS: follower has installed the snapshot
+            // Advance nextIndex and matchIndex so leader knows it is caught up
+            m_matchIndex[id] = m_lastIncludedIndex;
+            m_nextindex[id]  = m_lastIncludedIndex + 1;
+
+            LogEvent event(LogEvent::Type::SNAPSHOT, m_id, m_currentTerm, 
+                "Follower " + std::to_string(id) + " installed snapshot, nextIndex: " + std::to_string(m_nextindex[id]) + " args.lastIncludedTerm " + std::to_string(args.lastIncludedTerm));
+            m_logger->logRaft(LogLevel::INFO, event);
+        }
+    //}).detach();
+    });
+}
+
+
 
 uint64_t Raft::helperGetRelativeIndex(uint64_t absoluteIndex) const
 {
@@ -1015,7 +1031,7 @@ uint64_t Raft::helperGetRelativeIndex(uint64_t absoluteIndex) const
 bool Raft::sendRequestVoteRPC(int32_t id, const RequestVoteArgs& args, RequestVoteReply& reply)
 {
     LogEvent event(LogEvent::Type::ELECTION, m_id, m_currentTerm, "Sending request vote to server " + std::to_string(id));
-    m_logger->log(LogLevel::DEBUG, event);
+    m_logger->logRaft(LogLevel::DEBUG, event);
 
     return m_peers[id]->call("Raft.RequestVote", args, reply);
 }
