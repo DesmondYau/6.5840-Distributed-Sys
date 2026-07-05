@@ -1,3 +1,0 @@
-/6.5840/Lab4_KvRaft/build/CMakeFiles/kvRaft_tests.dir
-/6.5840/Lab4_KvRaft/build/CMakeFiles/edit_cache.dir
-/6.5840/Lab4_KvRaft/build/CMakeFiles/rebuild_cache.dir
